@@ -1,40 +1,75 @@
 import sys
 import openai
-from PyQt6.QtCore import Qt, QTimer, QSize
-from PyQt6.QtGui import QClipboard, QKeyEvent, QFont, QAction, QTextDocument
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit, 
-                            QTextEdit, QVBoxLayout, QWidget, QLabel, 
+from PyQt6.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal
+from PyQt6.QtGui import (QClipboard, QKeyEvent, QFont, QAction, 
+                         QTextDocument, QTextCursor)
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit,
+                            QTextEdit, QVBoxLayout, QWidget, QLabel,
                             QFrame)
 from PyQt6.QtGui import QShortcut
 
-# TODO: config
-ai_model_name = "phi3.5"
-system_prompt = "You're a program that processes text based on user instructions. Respond with the result only — no explanations, no extra text."
+# Configuration
+ai_model_name = "phi3.5"  # Updated model name for Ollama
+ai_model_name = "qwen2.5-coder:1.5b"  # Updated model name for Ollama
 
+# system_prompt = "You're a program that processes text based on user instructions. Respond with the result only — no explanations, no extra text."
+system_prompt = """
+You are a smart text-processing program. For every user request, perform the specified operation on the provided text and output exactly:
+```
+...
+```
+with the computed content in place of the dots.
+"""
 client = openai.OpenAI(
     base_url="http://localhost:11434/v1",
-    api_key="ollama"  # Dummy key; required by the SDK but not used by Ollama
+    api_key="ollama"  # Dummy key required by SDK
 )
 
-# TODO: config
-def ai(msg,text):
+def ai(msg, text):
     response = client.chat.completions.create(
-    model=ai_model_name,  # Replace with the model you've loaded in Ollama
-    messages=[
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content":msg+"\ntext:```\n"+text+"\n```"}
-    ]
-)
-    return response.choices[0].message.content
+        model=ai_model_name,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{msg}\ntext:```\n{text}\n```"}
+        ],
+        stream=True
+    )
+    for chunk in response:
+        content = chunk.choices[0].delta.content
+        if content is not None:
+            yield content
 
+class AIStreamWorker(QThread):
+    chunk_received = pyqtSignal(str)
+    finished_signal = pyqtSignal(str)
+    error_occurred = pyqtSignal(str)  # New error signal
+
+    def __init__(self, msg, text):
+        super().__init__()
+        self.msg = msg
+        self.text = text
+
+    def run(self):
+        full_response = ""
+        try:
+            for chunk in ai(self.msg, self.text):
+                self.chunk_received.emit(chunk)
+                full_response += chunk
+            self.finished_signal.emit(full_response)
+        except Exception as e:
+            import traceback;traceback.print_exc()
+            self.error_occurred.emit(f"AI Error: {str(e)}")
 
 class SlickLauncher(QMainWindow):
     def __init__(self):
         super().__init__()
         self.selected_text = ""
+        self.ai_worker = None
         self.initUI()
         self.setupClipboard()
-        
+        self.ai_execute_result = ""
+        self.is_first_chunk = True  # Track first chunk for preview
+
     def initUI(self):
         # Window configuration
         self.setWindowTitle("Slick Launcher")
@@ -115,7 +150,7 @@ class SlickLauncher(QMainWindow):
         self.centerWindow()
         
         # Shortcuts
-        QShortcut("Ctrl+C", self).activated.connect(self.quit)
+        # QShortcut("Ctrl+C", self).activated.connect(self.quit)
         
         # Signals
         self.input_field.textChanged.connect(self.updatePreview)
@@ -188,15 +223,42 @@ class SlickLauncher(QMainWindow):
             self.status_bar.setText("❌ Invalid expression")
         
         self.adjustHeight()
-        
     def generateCommandPreview(self):
-        command = self.input_field.text().strip()
-        if command.startswith("!"):
-            self.preview_output.setPlainText(f"Command preview: {command[1:]}")
-            self.preview_output.show()
-            self.status_bar.setText("👀 Previewing command - Press Enter to execute")
-            self.adjustHeight()
+        self.adjustHeight()
+        command = self.input_field.text().strip()[1:]
+        self.is_first_chunk = True
+        self.preview_output.setPlainText("AI Response: Generating...")
+        self.preview_output.show()
+
+        if self.ai_worker and self.ai_worker.isRunning():
+            self.ai_worker.terminate()
+
+        self.ai_worker = AIStreamWorker(command, self.selected_text)
+        self.ai_worker.chunk_received.connect(self.updatePreviewText)
+        self.ai_worker.finished_signal.connect(self.handlePreviewFinished)
+        self.ai_worker.error_occurred.connect(self.handleAIError)
+        self.ai_worker.start()
+
+    def updatePreviewText(self, chunk):
+        cursor = self.preview_output.textCursor()
         
+        if self.is_first_chunk:
+            # Clear "Generating..." message on first chunk
+            self.preview_output.setPlainText("AI Response: ")
+            self.is_first_chunk = False
+            
+        # Insert new chunk at the end
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        cursor.insertText(chunk)
+        
+        # Auto-scroll to bottom
+        self.preview_output.ensureCursorVisible()
+
+    def handlePreviewFinished(self, full_response):
+        self.status_bar.setText("AI preview complete - Ctrl+Enter to re-generate")
+    def handleAIError(self, error_msg):
+        self.preview_output.setPlainText(error_msg)
+        self.status_bar.setText("AI Error occurred")
     def adjustHeight(self):
         base_height = self.input_field.sizeHint().height() + self.status_bar.sizeHint().height() + 20
         if self.preview_output.isVisible():
@@ -206,52 +268,55 @@ class SlickLauncher(QMainWindow):
             base_height += preview_height
         self.resize(QSize(self.width(), base_height))
         self.centerWindow()
-    
+    def focusOutEvent(self, event):
+        self.quit()
     def quit(self):
         QApplication.quit()
 
     def executeCommand(self):
         command = self.input_field.text().strip()
         if command.startswith("!"):
-            try:
-                result = ai(command[1:],self.selected_text)
-                self.status_bar.setText(f"💬 Ollama Response: {result}")
-                
-                # Copy to clipboard
-                clipboard = QApplication.clipboard()
-                clipboard.setText(result)
-                
-                # Close after 2 seconds
-                QTimer.singleShot(2000, self.quit)
-            except Exception as e:
-                self.status_bar.setText(f"🌐 Ollama Error: {str(e)}")
-                import traceback
-                traceback.print_exc()
-        else: 
-            try:
-                lines = self.selected_text.split('\n')
-                context = {'text': self.selected_text, 'lines': lines}
-                result = eval(command, {'__builtins__': {}, **context})
-                print("EVAL RESULT:", result)
-                
-                # Copy to clipboard
-                clipboard = QApplication.clipboard()
-                clipboard.setText(str(result))
-                
-                self.status_bar.setText(f"📋 Result copied to clipboard: {str(result)}")
-                self.quit()
-            except Exception as e:
-                self.status_bar.setText(f"💥 Execution error: {str(e)}")
+            self.handleAICommand(command[1:])
+        else:
+            self.handlePythonCommand(command)
+
+    def handleAICommand(self, command):
+        self.status_bar.setText("💻 Processing AI command...")
+        self.ai_worker = AIStreamWorker(command, self.selected_text)
+        self.ai_execute_result = ""
+        
+        self.ai_worker.chunk_received.connect(self.accumulateAIResult)
+        self.ai_worker.finished_signal.connect(self.finalizeAICommand)
+        self.ai_worker.start()
+
+    def accumulateAIResult(self, chunk):
+        self.ai_execute_result += chunk
+
+    def finalizeAICommand(self, result):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(result)
+        self.status_bar.setText(f"📋 AI result copied to clipboard ({len(result)} chars)")
+        QTimer.singleShot(2000, self.quit)
+
+    def handlePythonCommand(self, command):
+        try:
+            lines = self.selected_text.split('\n')
+            context = {'text': self.selected_text, 'lines': lines}
+            result = eval(command, {'__builtins__': {}, **context})
+            
+            clipboard = QApplication.clipboard()
+            clipboard.setText(str(result))
+            self.status_bar.setText(f"📋 Result copied: {str(result)[:50]}...")
+            self.quit()
+        except Exception as e:
+            self.status_bar.setText(f"💥 Error: {str(e)}")
 
     def focusOutEvent(self, event):
         self.quit()
         super().focusOutEvent(event)
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setFont(QFont("Fira Code", 10))
-    
     launcher = SlickLauncher()
     launcher.show()
-    
     sys.exit(app.exec())
