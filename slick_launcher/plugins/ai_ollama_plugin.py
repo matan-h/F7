@@ -4,7 +4,6 @@ from PyQt6.QtCore import QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QTextCursor
 from PyQt6.QtWidgets import QTextEdit, QLabel
 from .base_plugin import PluginInterface
-
 # import ollama # Make sure ollama is installed. TODO: only load when needed.
 def _get_ollama_module():
     # just "import ollama take 200ms. openai take 500ms. so I lazy load them."
@@ -101,10 +100,12 @@ class AiOllamaPlugin(PluginInterface):
             self.ai_worker.error_occurred.connect(lambda err: self._handle_ai_error(err, preview_widget, status_widget, is_final_error=True))
 
         self.ai_worker.start()
-
     def update_preview(self, command: str, selected_text: str, preview_widget: QTextEdit, status_widget: QLabel,manual:bool) -> None:
         """Handles Ctrl+Enter preview generation."""
-        if not manual:return;
+        
+        if not manual:
+            preview_widget.hide()
+            return
         # Command here includes the prefix, strip it for the AI prompt
         ai_command = command.lstrip(self.PREFIX)
         if not ai_command:

@@ -36,7 +36,7 @@ class PythonEvalPlugin(PluginInterface):
         except Exception as e:
             return None, f"🚨 Error: {str(e)}"
 
-    def update_preview(self, command: str, selected_text: str, preview_widget: QTextEdit, _status_widget: QLabel,_manual:bool) -> None:
+    def update_preview(self, command: str, selected_text: str, preview_widget: QTextEdit, status_widget: QLabel,manual:bool) -> None:
         result_str, error_str = self._evaluate(command, selected_text)
 
         if error_str:

@@ -118,7 +118,7 @@ class SlickLauncher(QMainWindow):
         self.centerWindow()
 
         # Signals
-        self.input_field.textChanged.connect(self.handle_input_change)
+        self.input_field.textChanged.connect(lambda: self.handle_input_change())
         QApplication.instance().focusChanged.connect(self.on_focus_changed)
         # Connect the application's aboutToQuit signal to our cleanup handler
         QApplication.instance().aboutToQuit.connect(self.cleanup_plugins)
@@ -188,7 +188,7 @@ class SlickLauncher(QMainWindow):
             self.selected_text,
             self.preview_output,
             self.status_bar,
-            manual
+            manual=manual
         )
 
         # Crucial: Adjust height *after* the plugin potentially shows/hides/resizes preview

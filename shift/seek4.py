@@ -1,6 +1,6 @@
 import sys
 import ollama
-from shift.clip import get_selected_text
+from slick_launcher.clip import get_selected_text
 
 from PyQt6.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal
 from PyQt6.QtGui import ( QKeyEvent, QFont, 
@@ -308,10 +308,11 @@ class SlickLauncher(QMainWindow):
         # If the window is no longer the active window, close it
         if not self.isActiveWindow():
             self.quit()
-        
-if __name__ == "__main__":
+def main():
     app = QApplication(sys.argv)
     app.setFont(QFont("Fira Code", 10))
     launcher = SlickLauncher()
     launcher.show()
     sys.exit(app.exec())
+if __name__ == "__main__":
+    main()
