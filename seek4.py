@@ -1,32 +1,27 @@
 import sys
-import openai
+import ollama
+from shift.clip import get_selected_text
+
 from PyQt6.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal
-from PyQt6.QtGui import (QClipboard, QKeyEvent, QFont, QAction, 
-                         QTextDocument, QTextCursor)
+from PyQt6.QtGui import ( QKeyEvent, QFont, 
+                         QTextCursor)
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit,
                             QTextEdit, QVBoxLayout, QWidget, QLabel,
                             QFrame)
-from PyQt6.QtGui import QShortcut
 
 # Configuration
-ai_model_name = "phi3.5"  # Updated model name for Ollama
 ai_model_name = "qwen2.5-coder:1.5b"  # Updated model name for Ollama
+ai_model_name = "phi3"  # Updated model name for Ollama
+
 
 # system_prompt = "You're a program that processes text based on user instructions. Respond with the result only — no explanations, no extra text."
 system_prompt = """
-You are a smart text-processing program. For every user request, perform the specified operation on the provided text and output exactly:
-```
-...
-```
-with the computed content in place of the dots.
+You are a smart text-processing program. For each request, perform the operation on the given text and output **exactly** the result.nothing more. put the final answer in codeblock.
 """
-client = openai.OpenAI(
-    base_url="http://localhost:11434/v1",
-    api_key="ollama"  # Dummy key required by SDK
-)
+
 
 def ai(msg, text):
-    response = client.chat.completions.create(
+    response = ollama.chat(
         model=ai_model_name,
         messages=[
             {"role": "system", "content": system_prompt},
@@ -35,7 +30,7 @@ def ai(msg, text):
         stream=True
     )
     for chunk in response:
-        content = chunk.choices[0].delta.content
+        content = chunk['message']['content']
         if content is not None:
             yield content
 
@@ -66,7 +61,8 @@ class SlickLauncher(QMainWindow):
         self.selected_text = ""
         self.ai_worker = None
         self.initUI()
-        self.setupClipboard()
+        self.selected_text = get_selected_text()
+        self.resetStatus()
         self.ai_execute_result = ""
         self.is_first_chunk = True  # Track first chunk for preview
 
@@ -88,6 +84,7 @@ class SlickLauncher(QMainWindow):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(4)
         self.main_widget.setLayout(layout)
+
         
         # Input field
         self.input_field = QLineEdit()
@@ -148,12 +145,10 @@ class SlickLauncher(QMainWindow):
         # Geometry
         self.resize(500, 1)
         self.centerWindow()
-        
-        # Shortcuts
-        # QShortcut("Ctrl+C", self).activated.connect(self.quit)
-        
+                
         # Signals
         self.input_field.textChanged.connect(self.updatePreview)
+        QApplication.instance().focusChanged.connect(self.on_focus_changed)
         
     def centerWindow(self):
         frame = self.frameGeometry()
@@ -162,13 +157,13 @@ class SlickLauncher(QMainWindow):
         self.move(frame.topLeft())
         
     def setupClipboard(self):
-        QTimer.singleShot(100, self.captureSelection)
-        
-    def captureSelection(self):
-        clipboard = QApplication.clipboard()
-        self.selected_text = clipboard.text(mode=QClipboard.Mode.Selection)
+        # QTimer.singleShot(100, self.captureSelection)
+        self.selected_text = get_selected_text()
+    
+    def resetStatus(self):
         self.status_bar.setText(f"✂️ Selected text ({len(self.selected_text)} chars)")
-        
+
+                
     def eventFilter(self, obj, event):
         if obj is self.input_field and event.type() == QKeyEvent.Type.KeyPress:
             key = event.key()
@@ -186,9 +181,6 @@ class SlickLauncher(QMainWindow):
             elif key == Qt.Key.Key_Escape:
                 self.quit()
                 return True
-            elif key == Qt.Key.Key_C and modifiers & Qt.KeyboardModifier.ControlModifier:
-                self.quit()
-                return True
         return super().eventFilter(obj, event)
         
     def updatePreview(self):
@@ -197,6 +189,7 @@ class SlickLauncher(QMainWindow):
         
         if not command:
             self.adjustHeight()
+            self.resetStatus()
             return
             
         if command.startswith("!"):
@@ -209,7 +202,7 @@ class SlickLauncher(QMainWindow):
             context = {
                 'text': self.selected_text,
                 'lines': lines,
-                '__builtins__': {}
+                # '__builtins__': {}
             }
             
             result = eval(command, context)
@@ -310,10 +303,12 @@ class SlickLauncher(QMainWindow):
             self.quit()
         except Exception as e:
             self.status_bar.setText(f"💥 Error: {str(e)}")
-
-    def focusOutEvent(self, event):
-        self.quit()
-        super().focusOutEvent(event)
+    
+    def on_focus_changed(self, old, now):
+        # If the window is no longer the active window, close it
+        if not self.isActiveWindow():
+            self.quit()
+        
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setFont(QFont("Fira Code", 10))
