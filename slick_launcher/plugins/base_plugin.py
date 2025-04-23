@@ -50,7 +50,7 @@ class PluginInterface(ABC):
             selected_text: The text currently selected in the system.
             preview_widget: The QTextEdit widget used for displaying the preview.
             status_widget: The QLabel widget for status updates.
-            manual: true if the operation was triggered by ctrl+Enter.
+            manual: true if the preview was triggered by ctrl+Enter.
         """
         pass
 
