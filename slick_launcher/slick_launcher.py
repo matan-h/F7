@@ -621,6 +621,12 @@ def main():
     try:
         launcher = SlickLauncher()
         launcher.show()
+        # --- ADDED LINES FOR FOCUS on windows, as windows doesnt like just jumping windows---
+        # Ensure the window is brought to front and becomes active
+        launcher.showNormal() # Restore if minimized (optional, but good practice)
+        launcher.activateWindow() # Activate the window
+        launcher.raise_()       # Bring the window to the front
+
         # Set focus explicitly to the input field after showing
         launcher.input_field.setFocus()
         sys.exit(app.exec())
