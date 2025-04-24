@@ -38,15 +38,30 @@ class AIStreamWorker(QThread):
                 model=AI_MODEL_NAME,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": f"{self.msg}\ntext:```\n{self.text}\n```"}
+                    {"role": "user", "content": f"USER: `{self.msg}`\ntext:```\n{self.text}\n```"}
                 ],
                 stream=True
             )
+            in_block = False # inside ```<>```
+            in_declare = False
+
             for chunk in response:
                 if not self._is_running: # Check if termination requested
                     break
-                content = chunk.get('message', {}).get('content')
+                content:str = chunk.get('message', {}).get('content')
                 if content:
+                    if content.strip().startswith("```"):
+                        if not in_block:
+                            in_declare = True
+                        else:
+                            in_block = False
+                            continue
+                    if in_declare:
+                        if "\n" in content:
+                            in_declare = False
+                            in_block = True
+                        continue
+
                     self.chunk_received.emit(content)
                     full_response += content
             if self._is_running:
@@ -88,6 +103,7 @@ class AiOllamaPlugin(PluginInterface):
         self.ai_worker = AIStreamWorker(command, selected_text)
 
         if for_preview:
+            
             # Connect signals for preview updates
             self.ai_worker.chunk_received.connect(lambda chunk: self._update_preview_text(chunk, preview_widget))
             self.ai_worker.finished_signal.connect(lambda fr: self._handle_preview_finished(fr, status_widget))
@@ -95,11 +111,12 @@ class AiOllamaPlugin(PluginInterface):
         else:
             # Connect signals for final execution
             self.accumulated_result = "" # Reset result for execution
-            self.ai_worker.chunk_received.connect(self._accumulate_ai_result)
+            self.ai_worker.chunk_received.connect(self._accumulate_ai_result) # TODO: update preview text
             self.ai_worker.finished_signal.connect(self._finalize_ai_command)
             self.ai_worker.error_occurred.connect(lambda err: self._handle_ai_error(err, preview_widget, status_widget, is_final_error=True))
 
         self.ai_worker.start()
+
     def update_preview(self, command: str, selected_text: str, preview_widget: QTextEdit, status_widget: QLabel,manual:bool) -> None:
         """Handles Ctrl+Enter preview generation."""
         
@@ -167,14 +184,7 @@ class AiOllamaPlugin(PluginInterface):
 
     def _finalize_ai_command(self, full_result: str):
         """Called when AI stream finishes during execute."""
-        clipboard = self.launcher.get_clipboard() # Use launcher's method
-        if clipboard:
-             clipboard.setText(full_result)
-             self.launcher.status_bar.setText(f"📋 AI result copied ({len(full_result)} chars)")
-             QTimer.singleShot(1500, self.launcher.quit) # Quit after a short delay
-        else:
-             self.launcher.status_bar.setText("Error: Could not access clipboard")
-             QTimer.singleShot(2000, self.launcher.quit)
+        self.launcher.copy(full_result)
 
 
     def _cleanup_worker(self):

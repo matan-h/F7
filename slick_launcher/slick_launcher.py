@@ -13,8 +13,8 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit,
 from .clip import get_selected_text
 from .plugins.base_plugin import PluginInterface # For type hinting
 from .plugins import plugins
+# exit(0) # 258.18ms to this point
 
-d = os.path.dirname(__file__)
 # --- Constants ---
 class SlickLauncher(QMainWindow):
     # Signal to notify plugins about cleanup
@@ -123,7 +123,6 @@ class SlickLauncher(QMainWindow):
         # Connect the application's aboutToQuit signal to our cleanup handler
         QApplication.instance().aboutToQuit.connect(self.cleanup_plugins)
 
-
     def centerWindow(self):
         frame = self.frameGeometry()
         center = self.screen().availableGeometry().center()
@@ -150,6 +149,7 @@ class SlickLauncher(QMainWindow):
 
     def find_plugin(self, command: str = "", is_default: bool = False) -> PluginInterface | None:
         """Finds the highest priority plugin that matches the command or the default."""
+        # default - 0. prefix - 1. suffix - 2
         if is_default:
             # Find the first plugin marked as default
             for plugin in self.plugins:
@@ -268,19 +268,22 @@ class SlickLauncher(QMainWindow):
             result = self.active_plugin.execute(command_to_execute, self.selected_text)
 
             if result is not None: # Plugin returned something synchronously for clipboard
-                clipboard = self.get_clipboard()
-                if clipboard:
-                     clipboard.setText(str(result)) # Ensure it's a string
-                     result_preview = str(result).replace('\n', ' ')[ :50] # Truncate for status
-                     self.status_bar.setText(f"📋 Result copied: {result_preview}...")
-                     QTimer.singleShot(100, self.quit) # Quit after copying
-                else:
-                     self.status_bar.setText("INTERNAL Error: Could not access clipboard.")
+                self.copy(result)
 
         except Exception as e:
             print(f"Error during execution by plugin {self.active_plugin.NAME}: {e}", file=sys.stderr)
             traceback.print_exc()
             self.status_bar.setText(f"💥 Plugin Error: {e}")
+
+    def copy(self,result):
+        clipboard = self.get_clipboard()
+        if clipboard:
+                clipboard.setText(str(result)) # Ensure it's a string
+                result_preview = str(result).replace('\n', ' ')[ :50] # Truncate for status
+                self.status_bar.setText(f"📋 Result copied: {result_preview}...")
+                QTimer.singleShot(100, self.quit) # Quit after copying
+        else:
+                self.status_bar.setText("INTERNAL Error: Could not access clipboard.")
 
     def get_clipboard(self):
         """Safely get the clipboard."""
