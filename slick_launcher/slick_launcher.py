@@ -4,7 +4,7 @@ import os
 import importlib
 
 from PyQt6.QtCore import Qt, QTimer, QSize, pyqtSignal
-from PyQt6.QtGui import QKeyEvent, QFont, QGuiApplication
+from PyQt6.QtGui import QKeyEvent, QFont, QGuiApplication,QFontMetrics
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit,
                              QTextEdit, QVBoxLayout, QWidget, QLabel,
                              QFrame)
@@ -75,7 +75,7 @@ class SlickLauncher(QMainWindow):
         self.preview_output.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.preview_output.setFrameStyle(QFrame.Shape.NoFrame)
         self.preview_output.setMaximumHeight(200) # Increased max height a bit
-        self.preview_output.hide()
+        self.hide_preview()
         layout.addWidget(self.preview_output)
 
         self.status_bar = QLabel()
@@ -115,6 +115,8 @@ class SlickLauncher(QMainWindow):
         """)
 
         self.resize(500, 1) # Start minimal height
+        self.setFixedWidth(500)
+
         self.centerWindow()
 
         # Signals
@@ -175,7 +177,7 @@ class SlickLauncher(QMainWindow):
 
         if not self.active_plugin:
             self.status_bar.setText("No matching plugin found!")
-            self.preview_output.hide()
+            self.hide_preview()
             self.adjustHeight()
             return
         
@@ -203,6 +205,12 @@ class SlickLauncher(QMainWindow):
                 # Check for Ctrl+Enter specifically for preview generation (if plugin supports it)
                 # We let the *plugin* decide what Ctrl+Enter does in its update_preview
                 # Here, we just differentiate between normal Enter (execute) and others
+                if modifiers == Qt.KeyboardModifier.ShiftModifier:
+                    # just add a new line
+                    current_text = self.input_field.text()
+                    self.input_field.setText(current_text + '\n')
+                    return True
+
                 if modifiers == Qt.KeyboardModifier.ControlModifier:
                     # Re-trigger preview update explicitly on Ctrl+Enter
                     # This allows plugins like AI to re-generate previews
@@ -222,27 +230,31 @@ class SlickLauncher(QMainWindow):
 
     def adjustHeight(self):
         """Adjusts window height based on visible elements."""
-        QTimer.singleShot(0, self._perform_adjust_height) # Defer adjustment slightly
+        QTimer.singleShot(0, self.adjust_preview_height)
 
-    def _perform_adjust_height(self):
-        """The actual height adjustment logic."""
-        base_height = self.input_field.sizeHint().height() + self.status_bar.sizeHint().height() + self.layout().contentsMargins().top() + self.layout().contentsMargins().bottom() + self.layout().spacing() * 2 # Input + Status + Margins + Spacing
 
-        if self.preview_output.isVisible():
-            # Calculate required height for preview content dynamically
-            doc_height = self.preview_output.document().size().height()
-            # Add some padding and respect maximum height
-            preview_height = min(int(doc_height) + self.preview_output.contentsMargins().top() * 2 + 5, # Base height + padding
-                                 self.preview_output.maximumHeight())
-            self.preview_output.setFixedHeight(preview_height) # Set fixed height based on content
-            base_height += preview_height + self.layout().spacing()
+    def adjust_preview_height(self):
+        text = self.preview_output.toPlainText()
+        font_metrics = QFontMetrics(self.preview_output.font())
+        line_height = font_metrics.lineSpacing()
+        num_lines = text.count('\n') + 1
+        padding_vertical = 4 * 2  # Top and bottom padding
+        frame_width = self.preview_output.frameWidth() * 2
+        required_height = min(num_lines, 5) * line_height + padding_vertical + frame_width
 
-        self.resize(QSize(self.width(), int(base_height)))
+        if text:
+            self.preview_output.setFixedHeight(int(required_height))
+            self.preview_output.show()
+        else:
+            self.hide_preview()
+
+        self.adjustSize() # Adjust the main window height
+
 
     def hide_preview(self):
         """Utility to hide preview and adjust height."""
         self.preview_output.hide()
-        self.adjustHeight()
+        self.preview_output.setFixedHeight(0)
 
     def execute_command(self):
         """Executes the command using the currently active plugin."""
