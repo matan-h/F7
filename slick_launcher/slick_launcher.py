@@ -234,21 +234,44 @@ class SlickLauncher(QMainWindow):
 
 
     def adjust_preview_height(self):
-        text = self.preview_output.toPlainText()
+        # by gemini
+        # Get the QTextDocument associated with the QTextEdit
+        document = self.preview_output.document()
+
+        # Get the required height of the document's content based on layout
+        # This correctly accounts for wrapping, font, and explicit newlines
+        content_height = document.size().height()
+
+        # Get font metrics for calculating line height
         font_metrics = QFontMetrics(self.preview_output.font())
         line_height = font_metrics.lineSpacing()
-        num_lines = text.count('\n') + 1
-        padding_vertical = 4 * 2  # Top and bottom padding
-        frame_width = self.preview_output.frameWidth() * 2
-        required_height = min(num_lines, 5) * line_height + padding_vertical + frame_width
 
-        if text:
-            self.preview_output.setFixedHeight(int(required_height))
+        # Define padding and frame space (as in the original function)
+        padding_vertical = 4 * 2  # Assuming this is internal padding/margin
+        frame_vertical_thickness = self.preview_output.frameWidth() * 2 # Top + Bottom frame thickness
+
+        # Calculate the total height required for the content area + padding + frame
+        required_total_height = content_height + padding_vertical + frame_vertical_thickness
+
+        # Calculate the maximum height based on 5 lines (as in the original function)
+        max_height_5_lines = 5 * line_height + padding_vertical + frame_vertical_thickness
+
+        # Apply the maximum height constraint
+        final_set_height = min(required_total_height, max_height_5_lines)
+
+        # Check if there is any text content to decide whether to show or hide
+        # Using isEmpty() on the document is often more robust than checking the plain text string
+        if not document.isEmpty():
+            self.preview_output.setFixedHeight(int(final_set_height))
             self.preview_output.show()
         else:
-            self.hide_preview()
+            # If empty, potentially set a minimum height or hide
+            # Original hides, so let's keep that logic
+            self.hide_preview() # Assuming this is a method in the containing class
 
-        self.adjustSize() # Adjust the main window height
+        # Adjust the main window height (as in the original function)
+        self.adjustSize()
+
 
 
     def hide_preview(self):
