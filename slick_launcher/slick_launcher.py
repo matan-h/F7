@@ -6,7 +6,9 @@ from PyQt6.QtCore import Qt, QTimer, pyqtSignal,QStringListModel
 from PyQt6.QtGui import QKeyEvent, QFont, QGuiApplication,QFontMetrics
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit,
                              QTextEdit, QVBoxLayout, QWidget, QLabel,
-                             QFrame,QCompleter)
+                             QFrame,QCompleter,QMessageBox)
+
+from .settingsUI import SettingsDialog
 from . import workaround as _
 # Local imports
 from .clip import get_selected_text
@@ -14,7 +16,7 @@ from .plugins.base_plugin import PluginInterface # For type hinting
 from .plugins import plugins
 # exit(0) # 258.18ms to this point
 from .utils import WORD_BOUNDARY_RE
-from .settings import Settings 
+from .settings import Settings,Color
 from appdirs import user_config_dir
 
 
@@ -47,11 +49,11 @@ class SlickLauncher(QMainWindow):
         """Register the core settings for Slick Launcher."""
         # [colors] section
         colors = self.settings.section("colors")
-        colors.add("main", "Main background color", "#282c34", str)
-        colors.add("input", "Input field background color", "#1e222a", str)
-        colors.add("preview", "Preview background color", "#1e222a", str)
-        colors.add("completion_popup", "Completion popup background color", "#32363e", str)
-        colors.add("completion_selected", "Selected completion item background color", "#4682b4", str)
+        colors.add("main", "Main background color", "#282c34", Color)
+        colors.add("input", "Input field background color", "#1e222a", Color)
+        colors.add("preview", "Preview background color", "#1e222a", Color)
+        colors.add("completion_popup", "Completion popup background color", "#32363e", Color)
+        colors.add("completion_selected", "Selected completion item background color", "#4682b4", Color)
 
         # [system] section
         system = self.settings.section("system")
@@ -240,11 +242,31 @@ class SlickLauncher(QMainWindow):
 
         # If no prefix/suffix match, return the default plugin
         return self.find_plugin(is_default=True)
+    @snoop
+    def apply_settings(self):
+        """write settings from widget values and save to TOML."""
+
+        try:
+            self.settings.save_to_toml()
+            self.settingsApplied.emit()  # Notify main app
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save settings: {e}")
+
+    def open_settings(self):
+        """Open the settings dialog."""
+        QApplication.instance().focusChanged.disconnect(self.on_focus_changed)
+        dialog = SettingsDialog(self.settings, self)
+        # dialog.settingsApplied.connect(self.apply_settings)
+        dialog.exec()
+
 
 
     def handle_input_change(self,manual_trigger=False): # Removed manual=False, not needed here now
         """Called when text in the input field changes."""
         command = self.input_field.text()
+        if (command=="/settings"):
+            self.open_settings()
+
         cursor_pos = self.input_field.cursorPosition()
         new_active_plugin = self.find_plugin(command)
 

@@ -240,7 +240,7 @@ class AiOllamaPlugin(PluginInterface):
         cursor.insertText(chunk)
         preview_widget.ensureCursorVisible()
         self.launcher.adjustHeight()
-    @snoop
+
     def _handle_preview_finished(self, full_response: str, status_widget: QLabel):
         """Update status and store result when preview streaming completes."""
         self.last_preview_result = self.extract_code_block(full_response)
