@@ -140,15 +140,17 @@ def _get_selected_text_clipboard_hack():
             # Pyperclip can raise various errors depending on backend issues
             print(f"Warning: Could not read initial clipboard content: {e}", file=sys.stderr)
             original_clipboard = None # Treat as unknown
-
-        # 2. Simulate the copy command
-        if system == 'Darwin': # macOS
-            pyautogui.hotkey('command', 'c')
-        elif system == 'Windows' or system == 'Linux':
-            pyautogui.hotkey('ctrl', 'c')
-        else:
-            print(f"Unsupported system for copy simulation: {system}", file=sys.stderr)
-            return None # Cannot simulate copy
+        try:
+            # 2. Simulate the copy command
+            if system == 'Darwin': # macOS
+                pyautogui.hotkey('command', 'c')
+            elif system == 'Windows' or system == 'Linux':
+                pyautogui.hotkey('ctrl', 'c')
+            else:
+                print(f"Unsupported system for copy simulation: {system}", file=sys.stderr)
+                return None # Cannot simulate copy
+        except KeyboardInterrupt: # TODO:option add ctrl+shift+c option to settings?
+            raise Exception("you are likely running shift from the terminal. to copy on windows/macOS it does ctrl+c. Unfortunately, its the same shortcut to quit in the terminal. ")
 
         # 3. Wait briefly for clipboard to update (crucial, might need tuning)
         time.sleep(0.1)

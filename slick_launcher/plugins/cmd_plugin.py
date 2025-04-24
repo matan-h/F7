@@ -120,7 +120,7 @@ class CmdPlugin(PluginInterface):
         status_widget.setText("❌ Command error")
         preview_widget.show()
         self.launcher.adjustHeight()
-    @snoop
+
     def execute(self, command: str, selected_text: str) -> str | None:
         self.auto_preview_mode = command.startswith("$")
         cmd = command[1:].strip() if self.auto_preview_mode else command.strip()

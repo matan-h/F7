@@ -36,7 +36,7 @@ class AIStreamWorker(QThread):
         self.text = text
         self.settings = settings
         self._is_running = True
-    @snoop
+
 
     def run(self):
         """Execute the appropriate backend based on settings."""

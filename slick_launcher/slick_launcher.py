@@ -242,7 +242,8 @@ class SlickLauncher(QMainWindow):
 
         # If no prefix/suffix match, return the default plugin
         return self.find_plugin(is_default=True)
-    @snoop
+
+
     def apply_settings(self):
         """write settings from widget values and save to TOML."""
 
