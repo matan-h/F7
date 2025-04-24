@@ -20,7 +20,7 @@ def on_key_event(event):
     global last_shift_press_time
 
     # We only care about Shift key presses (KEY_DOWN)
-    if event.event_type == keyboard.KEY_DOWN and event.name == 'shift':
+    if event.event_type == keyboard.KEY_DOWN and event.name in  ['shift', 'right shift']:
         current_time = time.time()
         time_diff = current_time - last_shift_press_time
 
