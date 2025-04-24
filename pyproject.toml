@@ -1,0 +1,25 @@
+[project]
+name = "slick_launcher"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "matan h",email = "matan.honig2@gmail.com"}
+]
+readme = "README.md"
+requires-python = "^3.9"
+dependencies = [
+    "pyqt6 (>=6.9.0,<7.0.0)",
+    "pyperclip (>=1.9.0,<2.0.0)",
+    "pyautogui (>=0.9.54,<0.10.0)",
+    "snoop (>=0.6.0,<0.7.0)",
+    "ollama (>=0.4.8,<0.5.0)"
+]
+
+[tool.poetry.scripts]
+shift = "slick_launcher.__main__:main"  
+slick_launcher = "slick_launcher.__main__:main"  
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
