@@ -165,31 +165,5 @@ class PythonEvalPlugin(PluginInterface):
 
         else:
             return
-            
-
-                    # --- Show Popup and Select First Item ---
-        # if completions and prefix: # Only show if there's something to complete
-        #     popup = self.launcher.completer.popup()
-        #     # Check visibility *before* calling complete() to avoid flicker if already visible
-        #     was_visible = popup.isVisible()
-        #     if not was_visible:
-        #          # Trigger the popup - geometry calculation happens here
-        #          self.launcher.completer.complete()
-
-        #     # Now it should be visible (or scheduled to be), set index
-        #     if popup.model().rowCount() > 0:
-        #         # Use QTimer.singleShot(0, ...) to ensure this runs *after* Qt has potentially
-        #         # processed the popup display and model update fully in the event loop.
-        #         def select_first():
-        #             index = popup.model().index(0, 0)
-        #             popup.setCurrentIndex(index)
-        #         select_first()
-
-        #     else:
-        #          # Hide popup if no completions found for this prefix
-        #          self.launcher.completer.popup().hide()
-
-        # else:
-        #     # No valid prefix found (e.g., cursor after space or operator)
-        #     self.launcher.completion_model.setStringList([]) # Clear completions
-        #     self.launcher.completer.popup().hide()
+    def register_settings(self, settings):
+        return super().register_settings(settings) # TODO

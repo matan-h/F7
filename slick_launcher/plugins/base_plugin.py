@@ -73,6 +73,12 @@ class PluginInterface(ABC):
             (like async handling and quitting via self.launcher.quit()).
         """
         pass
+    @abstractmethod
+    def register_settings(self, settings):
+        """Register plugin-specific settings.
+        
+        """
+        pass
     # --- Optional Methods ---
     # @abstractmethod
     def update_completions(self, command: str, cursor_pos: int) -> None:
@@ -85,6 +91,7 @@ class PluginInterface(ABC):
             cursor_pos: The current position of the text cursor.
         """
         pass 
+
 
 
     def cleanup(self) -> None:

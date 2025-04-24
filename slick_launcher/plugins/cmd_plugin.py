@@ -150,3 +150,5 @@ class CmdPlugin(PluginInterface):
 
     def cleanup(self) -> None:
         self._cleanup_worker()
+    def register_settings(self, settings):
+        return super().register_settings(settings) # TODO

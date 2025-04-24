@@ -1,4 +1,5 @@
 # slick_launcher.py
+import os
 import sys,traceback
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal,QStringListModel
@@ -6,13 +7,16 @@ from PyQt6.QtGui import QKeyEvent, QFont, QGuiApplication,QFontMetrics
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit,
                              QTextEdit, QVBoxLayout, QWidget, QLabel,
                              QFrame,QCompleter)
-
+from . import workaround as _
 # Local imports
 from .clip import get_selected_text
 from .plugins.base_plugin import PluginInterface # For type hinting
 from .plugins import plugins
 # exit(0) # 258.18ms to this point
 from .utils import WORD_BOUNDARY_RE
+from .settings import Settings 
+from appdirs import user_config_dir
+
 
 # --- Constants ---
 class SlickLauncher(QMainWindow):
@@ -24,13 +28,45 @@ class SlickLauncher(QMainWindow):
         self.selected_text = ""
         self.plugins = []
         self.active_plugin = None
-        self.completer = None         # <-- Add completer attribute
-        self.completion_model = None  # <-- Add model attribute
+        self.completer = None
+        self.completion_model = None
+
+        # Initialize settings before anything else
+        self.settings = Settings()
+        self.register_main_settings()  # Register core settings
 
         self.load_plugins()
+        for plugin in self.plugins:
+            plugin.register_settings(self.settings)  # Let plugins register their settings
+        
+        self.load_settings()    # Load from TOML after all registrations
         self.initUI()
         self.capture_initial_selection() # Get text immediately
         self.resetStatus() # Set initial status based on default plugin
+    def register_main_settings(self):
+        """Register the core settings for Slick Launcher."""
+        # [colors] section
+        colors = self.settings.section("colors")
+        colors.add("main", "Main background color", "#282c34", str)
+        colors.add("input", "Input field background color", "#1e222a", str)
+        colors.add("preview", "Preview background color", "#1e222a", str)
+        colors.add("completion_popup", "Completion popup background color", "#32363e", str)
+        colors.add("completion_selected", "Selected completion item background color", "#4682b4", str)
+
+        # [system] section
+        system = self.settings.section("system")
+        system.add("closeOnBlur", "Close launcher when it loses focus", True, bool)
+        system.add("doComplete", "Enable autocompletion", True, bool)
+        system.add("alwaysComplete", "Always show completions without waiting for '.'", False, bool)
+        system.add("rememberLast", "Remember the last command", True, bool)
+        system.add("history", "Enable command history", True, bool)
+
+    def load_settings(self):
+        """Load settings from the TOML file in the OS-appropriate directory."""
+        config_dir = user_config_dir("slick_launcher", "your_company_name")
+        os.makedirs(config_dir, exist_ok=True)
+        toml_path = os.path.join(config_dir, "settings.toml")
+        self.settings.load_from_toml(toml_path)
 
     def load_plugins(self):
         """Dynamically loads plugins from the PLUGIN_DIR directory."""
@@ -97,56 +133,57 @@ class SlickLauncher(QMainWindow):
         self.status_bar = QLabel()
         self.status_bar.setObjectName("StatusBar")
         layout.addWidget(self.status_bar)
-
-        self.setStyleSheet("""
-            #MainWidget {
-                background: rgba(40, 44, 52, 0.98);
+        qcss = f"""
+            #MainWidget {{
+                background: {self.settings.colors.main};
                 border-radius: 6px;
                 border: 1px solid rgba(255, 255, 255, 0.12);
-            }
-            #InputField {
+            }}
+            #InputField {{
                 font-size: 16px;
                 padding: 8px 12px;
-                background: rgba(30, 34, 42, 0.9);
+                background: {self.settings.colors.input};
                 border: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: 4px;
                 color: #abb2bf;
                 margin-bottom: 4px;
-            }
-            #PreviewOutput {
+            }}
+            #PreviewOutput {{
                 font-family: 'Fira Code', 'Consolas', monospace; /* Add fallback fonts */
                 font-size: 13px;
-                background: rgba(30, 34, 42, 0.9);
+                background: {self.settings.colors.preview};
                 color: #abb2bf;
                 border: 1px solid rgba(255, 255, 255, 0.06);
                 border-radius: 4px;
                 padding: 4px 8px;
-            }
-            #StatusBar {
+            }}
+            #StatusBar {{
                 color: #5c6370;
                 font-size: 11px;
                 padding: 2px 4px;
                 margin-top: 4px;
-            }
+            }}
                            
-            #CompletionPopup { /* Style the completer popup */
-                background: rgba(50, 54, 62, 0.98); /* Slightly different background */
+            #CompletionPopup {{ /* Style the completer popup */
+                background: {self.settings.colors.completion_popup};
                 border: 1px solid rgba(255, 255, 255, 0.15);
                 border-radius: 4px;
                 color: #abb2bf; /* Text color */
                 font-size: 13px; /* Match preview font size? */
                 padding: 2px;
                 margin: 0px; /* Important for positioning */
-            }
-            #CompletionPopup QAbstractItemView::item { /* Style individual items */
+            }}
+            #CompletionPopup QAbstractItemView::item {{ /* Style individual items */
                  padding: 4px 8px;
                  border-radius: 3px; /* Rounded corners for items */
-            }
-            #CompletionPopup QAbstractItemView::item:selected { /* Highlight selected item */
-                background-color: rgba(70, 130, 180, 0.7); /* SteelBlue with alpha */
+            }}
+            #CompletionPopup QAbstractItemView::item:selected {{ /* Highlight selected item */
+                background-color: {self.settings.colors.completion_selected};
                 color: #ffffff;
-            }
-        """)
+            }}
+        """
+        # print(qcss) # NOTE: to debug syntax errors, uncomment save as css file.
+        self.setStyleSheet(qcss)
 
         self.resize(500, 1) # Start minimal height
         self.setFixedWidth(500)
@@ -155,7 +192,8 @@ class SlickLauncher(QMainWindow):
 
         # Signals
         self.input_field.textChanged.connect(lambda: self.handle_input_change())
-        QApplication.instance().focusChanged.connect(self.on_focus_changed)
+        if self.settings.system.closeOnBlur:
+            QApplication.instance().focusChanged.connect(self.on_focus_changed)
         # Connect the application's aboutToQuit signal to our cleanup handler
         QApplication.instance().aboutToQuit.connect(self.cleanup_plugins)
 
@@ -230,12 +268,13 @@ class SlickLauncher(QMainWindow):
         self.resetStatus(self.active_plugin)
 
         # --- Autocomplete Handling ---
-        should_trigger_completion = manual_trigger
-        if command and cursor_pos > 0 and command[cursor_pos - 1] == '.':
-             should_trigger_completion = True
+        should_trigger_completion = manual_trigger or (
+            self.settings.system.alwaysComplete or
+            (command and cursor_pos > 0 and command[cursor_pos - 1] == '.')
+        )
 
         completions_updated = False # Flag to know if plugin provided new list
-        if self.active_plugin.HAS_AUTOCOMPLETE:
+        if self.settings.system.doComplete and self.active_plugin.HAS_AUTOCOMPLETE:
              if should_trigger_completion:
                  try:
                      # --- Let plugin update completions ---
