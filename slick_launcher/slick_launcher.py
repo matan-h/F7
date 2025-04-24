@@ -6,6 +6,7 @@ from PyQt6.QtGui import QKeyEvent, QFont, QGuiApplication,QFontMetrics
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit,
                              QTextEdit, QVBoxLayout, QWidget, QLabel,
                              QFrame,QCompleter)
+from . import workaround as _
 
 # Local imports
 from .clip import get_selected_text
