@@ -17,6 +17,8 @@ class PluginInterface(ABC):
     SUFFIX = None        # String suffix to trigger this plugin
     IS_DEFAULT = False   # True if this plugin handles input without matching prefix/suffix
     PRIORITY = 99        # Lower number means higher priority for matching
+    
+    HAS_AUTOCOMPLETE = False # Set to True in plugins that provide completion
 
     # --- Methods ---
 
@@ -71,6 +73,19 @@ class PluginInterface(ABC):
             (like async handling and quitting via self.launcher.quit()).
         """
         pass
+    # --- Optional Methods ---
+    # @abstractmethod
+    def update_completions(self, command: str, cursor_pos: int) -> None:
+        """
+        Optional: Update autocomplete suggestions based on the current command and cursor position.
+        The plugin should interact with the launcher's completer model if it implements this.
+
+        Args:
+            command: The full text currently in the input field.
+            cursor_pos: The current position of the text cursor.
+        """
+        pass 
+
 
     def cleanup(self) -> None:
         """

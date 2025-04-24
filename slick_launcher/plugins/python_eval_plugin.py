@@ -2,12 +2,14 @@
 import contextlib
 import io
 import sys
-import ast
 import builtins
+import rlcompleter
+import re
 
 from PyQt6.QtWidgets import QTextEdit, QLabel
 from .base_plugin import PluginInterface
 from ..python_utils import dotdict,smart_eval,repr_as_json,PyUtils,auto_parse,redirect_stdin
+from ..utils import WORD_BOUNDARY_RE
 
 
 class PythonEvalPlugin(PluginInterface):
@@ -16,6 +18,8 @@ class PythonEvalPlugin(PluginInterface):
     SUFFIX = None
     IS_DEFAULT = True # This handles input if no other plugin matches
     PRIORITY = 90     # Lower than AI prefix plugin
+    
+    HAS_AUTOCOMPLETE = True # Signal that this plugin provides completions
 
     def __init__(self, launcher_instance):
         self.eval_context = self._create_context()
@@ -62,9 +66,6 @@ class PythonEvalPlugin(PluginInterface):
         elif result_str is not None:
             preview_widget.setPlainText(result_str)
             preview_widget.show()
-        else:
-            # No command or valid result (e.g., command is empty)
-            preview_widget.hide()
 
         # Important: Adjust height must be called by the main launcher after preview update
         # self.launcher.adjustHeight() # Don't call directly from plugin
@@ -110,7 +111,7 @@ class PythonEvalPlugin(PluginInterface):
         ctx.lines_map = utils.lines_map
         # auto parse
         try:
-            auto = auto_parse(text)
+            auto = auto_parse(text) or text
         except Exception:
             ctx.parse_error = sys.exc_info()
             # do not block user on error
@@ -120,3 +121,75 @@ class PythonEvalPlugin(PluginInterface):
 
         self.eval_context.update(ctx)
 
+    def update_completions(self, command: str, cursor_pos: int) -> None:
+        """Generate Python completions and update the launcher's completer."""
+        if not self.launcher.completer or not self.launcher.completion_model:
+             # Should not happen if launcher initializes correctly
+             print("Warning: Launcher completer not available.", file=sys.stderr)
+             return
+
+        text_before_cursor = command[:cursor_pos]
+
+        # --- Determine the text fragment to complete ---
+        # Use regex to find the last sequence of word characters/dots before cursor
+        match = WORD_BOUNDARY_RE.search(text_before_cursor)
+        if match:
+            prefix = match.group(1)
+            # Use rlcompleter logic
+            # Need a *new* completer instance each time? Or update namespace?
+            # rlcompleter seems stateful with its matches, safer to recreate.
+            completer = rlcompleter.Completer(self.eval_context)
+            completer.use_main_ns = False
+            completer.use_readline = False
+
+            completions = []
+            state = 0
+            while True:
+                # rlcompleter needs the *fragment* and state index
+                comp = completer.complete(prefix, state)
+                if comp is None:
+                    break
+                completions.append(comp)
+                state += 1
+
+            # Update the model *before* setting the prefix
+            self.launcher.completion_model.setStringList(completions)
+
+            # Tell the QCompleter which part of the input it's completing
+            # This ensures it filters correctly and knows what to replace
+            self.launcher.completer.setCompletionPrefix(prefix)
+            if not completions and prefix: # If we had a prefix but found nothing
+             self.launcher.completer.popup().hide()
+            elif not prefix: # If there wasn't even a prefix to search for
+                self.launcher.completer.popup().hide()
+
+        else:
+            return
+            
+
+                    # --- Show Popup and Select First Item ---
+        # if completions and prefix: # Only show if there's something to complete
+        #     popup = self.launcher.completer.popup()
+        #     # Check visibility *before* calling complete() to avoid flicker if already visible
+        #     was_visible = popup.isVisible()
+        #     if not was_visible:
+        #          # Trigger the popup - geometry calculation happens here
+        #          self.launcher.completer.complete()
+
+        #     # Now it should be visible (or scheduled to be), set index
+        #     if popup.model().rowCount() > 0:
+        #         # Use QTimer.singleShot(0, ...) to ensure this runs *after* Qt has potentially
+        #         # processed the popup display and model update fully in the event loop.
+        #         def select_first():
+        #             index = popup.model().index(0, 0)
+        #             popup.setCurrentIndex(index)
+        #         select_first()
+
+        #     else:
+        #          # Hide popup if no completions found for this prefix
+        #          self.launcher.completer.popup().hide()
+
+        # else:
+        #     # No valid prefix found (e.g., cursor after space or operator)
+        #     self.launcher.completion_model.setStringList([]) # Clear completions
+        #     self.launcher.completer.popup().hide()

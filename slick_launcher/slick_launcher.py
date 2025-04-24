@@ -1,19 +1,18 @@
 # slick_launcher.py
 import sys,traceback
-import os
-import importlib
 
-from PyQt6.QtCore import Qt, QTimer, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal,QStringListModel
 from PyQt6.QtGui import QKeyEvent, QFont, QGuiApplication,QFontMetrics
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit,
                              QTextEdit, QVBoxLayout, QWidget, QLabel,
-                             QFrame)
+                             QFrame,QCompleter)
 
 # Local imports
 from .clip import get_selected_text
 from .plugins.base_plugin import PluginInterface # For type hinting
 from .plugins import plugins
 # exit(0) # 258.18ms to this point
+from .utils import WORD_BOUNDARY_RE
 
 # --- Constants ---
 class SlickLauncher(QMainWindow):
@@ -25,6 +24,9 @@ class SlickLauncher(QMainWindow):
         self.selected_text = ""
         self.plugins = []
         self.active_plugin = None
+        self.completer = None         # <-- Add completer attribute
+        self.completion_model = None  # <-- Add model attribute
+
         self.load_plugins()
         self.initUI()
         self.capture_initial_selection() # Get text immediately
@@ -67,6 +69,18 @@ class SlickLauncher(QMainWindow):
         self.input_field.setObjectName("InputField")
         self.input_field.installEventFilter(self)
         layout.addWidget(self.input_field)
+                # --- Setup Autocompleter ---
+        self.completion_model = QStringListModel()
+        self.completer = QCompleter(self.completion_model, self)
+        self.completer.setWidget(self.input_field)
+        self.completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        # self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive) # Often desired
+        self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseSensitive) # Python is case-sensitive
+        self.completer.setFilterMode(Qt.MatchFlag.MatchStartsWith) # Standard completion filter
+        # self.completer.setPopup(QFrame()) # Use a QFrame for custom styling if needed
+        self.completer.popup().setObjectName("CompletionPopup") # For styling
+        self.completer.activated[str].connect(self.insert_completion) # Signal when item selected
+
 
         self.preview_output = QTextEdit()
         self.preview_output.setObjectName("PreviewOutput")
@@ -75,6 +89,8 @@ class SlickLauncher(QMainWindow):
         self.preview_output.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.preview_output.setFrameStyle(QFrame.Shape.NoFrame)
         self.preview_output.setMaximumHeight(200) # Increased max height a bit
+        self.preview_output.setFocusPolicy(Qt.FocusPolicy.NoFocus) # Prevent Tab focusing read-only preview
+
         self.hide_preview()
         layout.addWidget(self.preview_output)
 
@@ -111,6 +127,24 @@ class SlickLauncher(QMainWindow):
                 font-size: 11px;
                 padding: 2px 4px;
                 margin-top: 4px;
+            }
+                           
+            #CompletionPopup { /* Style the completer popup */
+                background: rgba(50, 54, 62, 0.98); /* Slightly different background */
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 4px;
+                color: #abb2bf; /* Text color */
+                font-size: 13px; /* Match preview font size? */
+                padding: 2px;
+                margin: 0px; /* Important for positioning */
+            }
+            #CompletionPopup QAbstractItemView::item { /* Style individual items */
+                 padding: 4px 8px;
+                 border-radius: 3px; /* Rounded corners for items */
+            }
+            #CompletionPopup QAbstractItemView::item:selected { /* Highlight selected item */
+                background-color: rgba(70, 130, 180, 0.7); /* SteelBlue with alpha */
+                color: #ffffff;
             }
         """)
 
@@ -170,62 +204,217 @@ class SlickLauncher(QMainWindow):
         return self.find_plugin(is_default=True)
 
 
-    def handle_input_change(self,manual=False):
+    def handle_input_change(self,manual_trigger=False): # Removed manual=False, not needed here now
         """Called when text in the input field changes."""
-        command = self.input_field.text() # Get the raw command with potential prefix/suffix
-        self.active_plugin = self.find_plugin(command)
+        command = self.input_field.text()
+        cursor_pos = self.input_field.cursorPosition()
+        new_active_plugin = self.find_plugin(command)
 
+        # --- Handle Plugin Change ---
+        if new_active_plugin != self.active_plugin:
+            # Plugin changed, clear old completions immediately
+            if self.completion_model:
+                self.completion_model.setStringList([])
+            if self.completer:
+                self.completer.popup().hide()
+            # Update active plugin reference
+            self.active_plugin = new_active_plugin
+
+        # --- Plugin Logic ---
         if not self.active_plugin:
             self.status_bar.setText("No matching plugin found!")
             self.hide_preview()
             self.adjustHeight()
-            return
-        
+            return # No plugin, no preview or completion
+
         self.resetStatus(self.active_plugin)
 
+        # --- Autocomplete Handling ---
+        should_trigger_completion = manual_trigger
+        if command and cursor_pos > 0 and command[cursor_pos - 1] == '.':
+             should_trigger_completion = True
+
+        completions_updated = False # Flag to know if plugin provided new list
+        if self.active_plugin.HAS_AUTOCOMPLETE:
+             if should_trigger_completion:
+                 try:
+                     # --- Let plugin update completions ---
+                     # We assume plugin calls setStringList and setCompletionPrefix
+                     self.active_plugin.update_completions(command, cursor_pos)
+                     # Check if completions were actually generated after the update
+                     if self.completion_model.rowCount() > 0:
+                          completions_updated = True
+                          # Trigger the popup if not visible, handled by plugin now?
+                          # Let's ensure popup logic remains robust.
+                          # If plugin didn't show popup, maybe we should?
+                          if not self.completer.popup().isVisible():
+                              self.completer.complete() # Ensure popup shows
+                          # --- Call centralized select_first ---
+                          self.select_first_completion()
+
+                 except Exception as e:
+                     print(f"Error during completion update by plugin {self.active_plugin.NAME}: {e}", file=sys.stderr)
+                     traceback.print_exc()
+                     if self.completer: self.completer.popup().hide()
+             else:
+                 # Update prefix for filtering if popup already visible
+                 if self.completer.popup().isVisible():
+                      text_before_cursor = command[:cursor_pos]
+                      match = WORD_BOUNDARY_RE.search(text_before_cursor)
+                      if match:
+                          prefix = match.group(1)
+                          self.completer.setCompletionPrefix(prefix)
+                          # If prefix is now empty, maybe hide?
+                          if not prefix:
+                              self.completer.popup().hide()
+                          else:
+                              # Model might need filtering, ensure first item is selected again?
+                              # QCompleter handles filtering based on prefix, but selection might reset.
+                              self.select_first_completion() # Reselect first after prefix change
+                      else:
+                          self.completer.popup().hide() # Hide if prefix is broken
+
+        # If no completions were generated this time, hide the popup
+        if not completions_updated and not self.completer.popup().isVisible() and not manual_trigger:
+             # Don't hide if manually triggered and no completions found? Maybe show status?
+             if self.completer: self.completer.popup().hide()
+
+
+
+        # --- Preview Update ---
         # Let the active plugin handle the preview update
-        # The command passed might include prefix/suffix, plugin decides how to use it
+        # We can still use the manual flag concept here if needed (Ctrl+Enter)
+        is_manual_preview = False # Determine if Ctrl+Enter triggered this somehow if needed
         self.active_plugin.update_preview(
             command,
             self.selected_text,
             self.preview_output,
             self.status_bar,
-            manual=manual
+            manual=is_manual_preview # Pass appropriate value
         )
 
-        # Crucial: Adjust height *after* the plugin potentially shows/hides/resizes preview
+        # Adjust height *after* plugin updates preview/completions
         self.adjustHeight()
+    
+    def select_first_completion(self):
+        """Selects the first item in the completion popup if available."""
+        if not self.completer or not self.completer.popup().isVisible():
+             return # Don't try if completer/popup not ready
+
+        popup = self.completer.popup()
+        model = popup.model()
+        if model and model.rowCount() > 0:
+             # Use QTimer.singleShot to ensure it runs after Qt updates the view
+             def do_select():
+                 # Re-check visibility in case it was hidden before timer fired
+                 if popup.isVisible():
+                     index = model.index(0, 0)
+                     popup.setCurrentIndex(index)
+             QTimer.singleShot(0, do_select)
+
+
+    def insert_completion(self, completion):
+        """Inserts the selected completion into the input field."""
+        if not self.active_plugin or not self.active_plugin.HAS_AUTOCOMPLETE:
+            return # Should not happen if completer is only active for Python plugin
+
+        current_text = self.input_field.text()
+        cursor_pos = self.input_field.cursorPosition()
+
+        # Use the completion prefix the completer determined to know what to replace
+        prefix = self.completer.completionPrefix()
+        start_pos = cursor_pos - len(prefix)
+
+        # Construct the new text
+        new_text = current_text[:start_pos] + completion + current_text[cursor_pos:]
+        new_cursor_pos = start_pos + len(completion)
+
+        # Set the text and move cursor
+        self.input_field.setText(new_text)
+        self.input_field.setCursorPosition(new_cursor_pos)
+
+        # Hide the popup after inserting
+        self.completer.popup().hide()
 
     def eventFilter(self, obj, event):
         if obj is self.input_field and event.type() == QKeyEvent.Type.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
+            is_completer_visible = self.completer.popup().isVisible()
 
-            if key in [Qt.Key.Key_Return, Qt.Key.Key_Enter]:
-                # Check for Ctrl+Enter specifically for preview generation (if plugin supports it)
-                # We let the *plugin* decide what Ctrl+Enter does in its update_preview
-                # Here, we just differentiate between normal Enter (execute) and others
+            # --- Manual Completion Trigger ---
+            if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_Space:
+                 print("Manual completion triggered (Ctrl+Space)")
+                 # Directly call handle_input_change with manual trigger flag
+                 self.handle_input_change(manual_trigger=True)
+                 event.accept()
+                 return True
+
+            # --- Handle Completer Interaction ---
+            if is_completer_visible:
+                 current_completion = self.completer.currentCompletion() # Get currently highlighted item
+
+                 if key == Qt.Key.Key_Tab:
+                      if current_completion: # Ensure something is selected/highlighted
+                          self.insert_completion(current_completion)
+                          event.accept() # Consume the event!
+                          return True # Prevent default Tab behavior (focus change)
+                      else:
+                           # Nothing selected? Hide popup? Or cycle focus? Let's hide.
+                           self.completer.popup().hide()
+                           event.accept()
+                           return True
+
+
+                 elif key == Qt.Key.Key_Escape:
+                      self.completer.popup().hide()
+                      event.accept()
+                      return True
+
+                 # Let Up/Down arrow keys pass through to QCompleter's default handling
+                 elif key in [Qt.Key.Key_Up, Qt.Key.Key_Down]:
+                      # Let the completer handle navigation
+                      event.ignore() # Let Qt process it further (for the completer)
+                      return False # Indicate event should be processed further
+
+
+            # --- Original Key Handling (if completer didn't handle it) ---
+            if key in [Qt.Key.Key_Return, Qt.Key.Key_Enter] and not is_completer_visible: # Only execute if completer isn't active
                 if modifiers == Qt.KeyboardModifier.ShiftModifier:
-                    # just add a new line
                     current_text = self.input_field.text()
-                    self.input_field.setText(current_text + '\n')
+                    cursor_pos = self.input_field.cursorPosition()
+                    new_text = current_text[:cursor_pos] + '\n' + current_text[cursor_pos:]
+                    self.input_field.setText(new_text)
+                    self.input_field.setCursorPosition(cursor_pos + 1)
                     return True
 
                 if modifiers == Qt.KeyboardModifier.ControlModifier:
+                    print("Ctrl+Enter detected, triggering manual preview update")
                     # Re-trigger preview update explicitly on Ctrl+Enter
-                    # This allows plugins like AI to re-generate previews
-                    print("Ctrl+Enter detected, triggering preview update")
-                    self.handle_input_change(True) # Re-run the preview logic
+                    # Pass manual=True to the plugin's update_preview
+                    if self.active_plugin:
+                         self.active_plugin.update_preview(
+                             self.input_field.text(),
+                             self.selected_text,
+                             self.preview_output,
+                             self.status_bar,
+                             manual=True # Indicate manual trigger
+                         )
+                         self.adjustHeight() # Adjust height after potential preview change
                 else:
                     # Normal Enter executes the command
                     self.execute_command()
-                return True # Event handled
-
-            elif key == Qt.Key.Key_Escape:
-                self.quit()
                 return True
 
+            elif key == Qt.Key.Key_Escape:
+                  if not self.completer.popup().isVisible(): # Only quit if completer closed
+                     self.quit()
+                     return True
+
+        # Important: Pass events down for default QLineEdit/QCompleter handling
+        # if we didn't explicitly handle them above (e.g., text input, basic cursor moves)
         return super().eventFilter(obj, event)
+
 
 
     def adjustHeight(self):
@@ -267,7 +456,7 @@ class SlickLauncher(QMainWindow):
         else:
             # If empty, potentially set a minimum height or hide
             # Original hides, so let's keep that logic
-            self.hide_preview() # Assuming this is a method in the containing class
+            self.hide_preview()
 
         # Adjust the main window height (as in the original function)
         self.adjustSize()
