@@ -76,22 +76,36 @@ class Settings:
             print(f"Config file {file_path} not found. Using default settings.")
 
     def save_to_toml(self):
-        """Save current settings back to the TOML file at self.config_path."""
+        """Save current settings back to the TOML file at self.config_path,
+        omitting any values that match their defaults (or are None).
+        this mean, that by design None can only be default.
+        """
         path = self.config_path
-        
-        # Build a plain dict of only the registered sections/keys
+
         data = {}
         for section, settings in self._values.items():
             if section not in self._registry:
                 continue
+
             section_data = {}
+            reg_section = self._registry[section]
             for name, value in settings.items():
-                if name in self._registry[section] and value is not None: # toml doesnt have null/none
-                    section_data[name] = value
+                # only save registered keys
+                if name not in reg_section:
+                    continue
+
+                default = reg_section[name]['default']
+                # skip None or unchanged-from-default
+                if value is None or value == default:
+                    continue
+                # breakpoint()
+
+                section_data[name] = value
+
             if section_data:
                 data[section] = section_data
 
-        # Serialize and write
+        # serialize and write
         toml_bytes = tomli_w.dumps(data).encode("utf-8")
         with open(path, "wb") as f:
             f.write(toml_bytes)

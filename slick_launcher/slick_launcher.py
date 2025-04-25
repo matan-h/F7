@@ -3,12 +3,13 @@ import os
 import sys,traceback
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal,QStringListModel
-from PyQt6.QtGui import QKeyEvent, QFont, QGuiApplication,QFontMetrics
+from PyQt6.QtGui import QKeyEvent, QFont, QGuiApplication,QFontMetrics, QColor
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit,
                              QTextEdit, QVBoxLayout, QWidget, QLabel,
                              QFrame,QCompleter,QMessageBox)
 
-from .settingsUI import SettingsDialog
+
+from .settingsUI import SettingsDialog # Corrected import name
 from . import workaround as _
 # Local imports
 from .clip import get_selected_text
@@ -16,7 +17,7 @@ from .plugins.base_plugin import PluginInterface # For type hinting
 from .plugins import plugins
 # exit(0) # 258.18ms to this point
 from .utils import WORD_BOUNDARY_RE
-from .settings import Settings,Color
+from .settings import Settings,Color # Assuming Color class exists
 from appdirs import user_config_dir
 
 
@@ -24,6 +25,10 @@ from appdirs import user_config_dir
 class SlickLauncher(QMainWindow):
     # Signal to notify plugins about cleanup
     aboutToQuit = pyqtSignal()
+    # Signal emitted by main window when settings are applied (e.g., colors reloaded)
+    # This can be useful for plugins if they also use colors or settings that need dynamic updates
+    settings_reloaded = pyqtSignal()
+
 
     def __init__(self):
         super().__init__()
@@ -40,11 +45,15 @@ class SlickLauncher(QMainWindow):
         self.load_plugins()
         for plugin in self.plugins:
             plugin.register_settings(self.settings)  # Let plugins register their settings
-        
+
         self.load_settings()    # Load from TOML after all registrations
         self.initUI()
         self.capture_initial_selection() # Get text immediately
         self.resetStatus() # Set initial status based on default plugin
+
+        # The connection for reloading visual settings will be made
+        # when the SettingsDialog is opened.
+
     def register_main_settings(self):
         """Register the core settings for Slick Launcher."""
         # [colors] section
@@ -135,57 +144,9 @@ class SlickLauncher(QMainWindow):
         self.status_bar = QLabel()
         self.status_bar.setObjectName("StatusBar")
         layout.addWidget(self.status_bar)
-        qcss = f"""
-            #MainWidget {{
-                background: {self.settings.colors.main};
-                border-radius: 6px;
-                border: 1px solid rgba(255, 255, 255, 0.12);
-            }}
-            #InputField {{
-                font-size: 16px;
-                padding: 8px 12px;
-                background: {self.settings.colors.input};
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 4px;
-                color: #abb2bf;
-                margin-bottom: 4px;
-            }}
-            #PreviewOutput {{
-                font-family: 'Fira Code', 'Consolas', monospace; /* Add fallback fonts */
-                font-size: 13px;
-                background: {self.settings.colors.preview};
-                color: #abb2bf;
-                border: 1px solid rgba(255, 255, 255, 0.06);
-                border-radius: 4px;
-                padding: 4px 8px;
-            }}
-            #StatusBar {{
-                color: #5c6370;
-                font-size: 11px;
-                padding: 2px 4px;
-                margin-top: 4px;
-            }}
-                           
-            #CompletionPopup {{ /* Style the completer popup */
-                background: {self.settings.colors.completion_popup};
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 4px;
-                color: #abb2bf; /* Text color */
-                font-size: 13px; /* Match preview font size? */
-                padding: 2px;
-                margin: 0px; /* Important for positioning */
-            }}
-            #CompletionPopup QAbstractItemView::item {{ /* Style individual items */
-                 padding: 4px 8px;
-                 border-radius: 3px; /* Rounded corners for items */
-            }}
-            #CompletionPopup QAbstractItemView::item:selected {{ /* Highlight selected item */
-                background-color: {self.settings.colors.completion_selected};
-                color: #ffffff;
-            }}
-        """
-        # print(qcss) # NOTE: to debug syntax errors, uncomment save as css file.
-        self.setStyleSheet(qcss)
+
+        # Apply initial stylesheet based on loaded settings
+        self.apply_stylesheet()
 
         self.resize(500, 1) # Start minimal height
         self.setFixedWidth(500)
@@ -198,6 +159,90 @@ class SlickLauncher(QMainWindow):
             QApplication.instance().focusChanged.connect(self.on_focus_changed)
         # Connect the application's aboutToQuit signal to our cleanup handler
         QApplication.instance().aboutToQuit.connect(self.cleanup_plugins)
+
+    def generate_stylesheet(self) -> str:
+        """Generates the QSS string based on the current settings."""
+        # Access colors directly from the loaded settings object
+        colors = self.settings.colors # Assuming self.settings.colors is the 'colors' section
+
+        # Ensure color values are valid hex strings, default if not
+        def get_valid_hex(color_setting, default="#ffffff"):
+            if isinstance(color_setting, Color):
+                 # Use the Color object's hex attribute
+                 hex_str = color_setting
+            elif isinstance(color_setting, str):
+                 # Assume string is a potential hex code
+                 hex_str = color_setting
+            else:
+                 # Fallback if type is unexpected
+                 return default
+
+            # Basic validation (e.g., #RRGGBB or #RRGGBBAA)
+            if not isinstance(hex_str, str) or not (hex_str.startswith("#") and len(hex_str) in [7, 9]):
+                 print(f"Warning: Invalid color format '{hex_str}', using default '{default}'", file=sys.stderr)
+                 return default
+            return hex_str
+
+
+        qcss = f"""
+            #MainWidget {{
+                background: {get_valid_hex(colors.main, '#282c34')};
+                border-radius: 6px;
+                border: 1px solid rgba(255, 255, 255, 0.12);
+            }}
+            #InputField {{
+                font-size: 16px;
+                padding: 8px 12px;
+                background: {get_valid_hex(colors.input, '#1e222a')};
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 4px;
+                color: #abb2bf; /* Keep static text color unless you add it to settings */
+                margin-bottom: 4px;
+            }}
+            #PreviewOutput {{
+                font-family: 'Fira Code', 'Consolas', monospace; /* Add fallback fonts */
+                font-size: 13px;
+                background: {get_valid_hex(colors.preview, '#1e222a')};
+                color: #abb2bf; /* Keep static text color unless you add it to settings */
+                border: 1px solid rgba(255, 255, 255, 0.06);
+                border-radius: 4px;
+                padding: 4px 8px;
+            }}
+            #StatusBar {{
+                color: #5c6370; /* Keep static text color unless you add it to settings */
+                font-size: 11px;
+                padding: 2px 4px;
+                margin-top: 4px;
+            }}
+
+            #CompletionPopup {{ /* Style the completer popup */
+                background: {get_valid_hex(colors.completion_popup, '#32363e')};
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 4px;
+                color: #abb2bf; /* Text color */
+                font-size: 13px; /* Match preview font size? */
+                padding: 2px;
+                margin: 0px; /* Important for positioning */
+            }}
+            #CompletionPopup QAbstractItemView::item {{ /* Style individual items */
+                 padding: 4px 8px;
+                 border-radius: 3px; /* Rounded corners for items */
+            }}
+            #CompletionPopup QAbstractItemView::item:selected {{ /* Highlight selected item */
+                background-color: {get_valid_hex(colors.completion_selected, '#4682b4')};
+                color: #ffffff;
+            }}
+        """
+        return qcss
+
+    def apply_stylesheet(self):
+        """Generates and applies the stylesheet based on current settings."""
+        qcss = self.generate_stylesheet()
+        # print(qcss) # Uncomment to debug CSS
+        self.setStyleSheet(qcss)
+        # Emit signal after applying visual settings
+        self.settings_reloaded.emit()
+
 
     def centerWindow(self):
         frame = self.frameGeometry()
@@ -244,22 +289,46 @@ class SlickLauncher(QMainWindow):
         return self.find_plugin(is_default=True)
 
 
-    def apply_settings(self):
-        """write settings from widget values and save to TOML."""
+    def reload_visual_settings(self):
+        """Applies the stylesheet based on the current in-memory settings."""
+        print("Reloading visual settings based on current in-memory state...")
+        # Removed load_settings() - we want to use the settings modified by the dialog directly
+        self.apply_stylesheet() # Apply the stylesheet using the current values
 
-        try:
-            self.settings.save_to_toml()
-            self.settingsApplied.emit()  # Notify main app
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save settings: {e}")
 
     def open_settings(self):
         """Open the settings dialog."""
-        QApplication.instance().focusChanged.disconnect(self.on_focus_changed)
-        dialog = SettingsDialog(self.settings, self)
-        # dialog.settingsApplied.connect(self.apply_settings)
-        dialog.exec()
+        # Disconnect focus logic temporarily to prevent unintended quitting
+        if self.settings.system.closeOnBlur:
+            try:
+                 # Store the signal connection object to safely disconnect
+                 self._focus_changed_connection = QApplication.instance().focusChanged.disconnect(self.on_focus_changed)
+            except (TypeError, RuntimeError): # Handle case where it might not have been connected yet or already disconnected
+                 self._focus_changed_connection = None # Ensure it's None if disconnection fails
 
+
+        dialog = SettingsDialog(self.settings, self)
+
+        # --- Connect the signal from the dialog ---
+        # We assume SettingsDialog has a signal named 'settingsApplied'
+        # that it emits AFTER successfully updating the in-memory settings.
+        try:
+            dialog.settingsApplied.connect(self.reload_visual_settings)
+        except AttributeError:
+            print("Warning: SettingsDialog does not have a 'settingsApplied' signal. Auto-reload won't work.", file=sys.stderr)
+
+
+        dialog.exec() # Show the dialog modally
+
+        # Reconnect focus logic after the dialog is closed
+        if self.settings.system.closeOnBlur:
+            # Use the stored connection object if available, otherwise reconnect directly
+            if self._focus_changed_connection is None:
+                 QApplication.instance().focusChanged.connect(self.on_focus_changed)
+            else:
+                 # Reconnect using the stored connection object's connect method
+                 self._focus_changed_connection.connect(self.on_focus_changed)
+            self._focus_changed_connection = None # Clear the stored object
 
 
     def handle_input_change(self,manual_trigger=False): # Removed manual=False, not needed here now
@@ -267,6 +336,11 @@ class SlickLauncher(QMainWindow):
         command = self.input_field.text()
         if (command=="/settings"):
             self.open_settings()
+            # Clear the input field after opening settings? Or let user delete?
+            # self.input_field.clear()
+            # self.hide_preview() # Hide preview after opening settings
+            # self.adjustHeight()
+            return # Stop processing input if opening settings
 
         cursor_pos = self.input_field.cursorPosition()
         new_active_plugin = self.find_plugin(command)
@@ -334,13 +408,12 @@ class SlickLauncher(QMainWindow):
                               # QCompleter handles filtering based on prefix, but selection might reset.
                               self.select_first_completion() # Reselect first after prefix change
                       else:
-                          self.completer.popup().hide() # Hide if prefix is broken
+                          self.completer.popup().hide() # Hide if prefix is broken)
 
         # If no completions were generated this time, hide the popup
         if not completions_updated and not self.completer.popup().isVisible() and not manual_trigger:
              # Don't hide if manually triggered and no completions found? Maybe show status?
              if self.completer: self.completer.popup().hide()
-
 
 
         # --- Preview Update ---
@@ -357,7 +430,7 @@ class SlickLauncher(QMainWindow):
 
         # Adjust height *after* plugin updates preview/completions
         self.adjustHeight()
-    
+
     def select_first_completion(self):
         """Selects the first item in the completion popup if available."""
         if not self.completer or not self.completer.popup().isVisible():
@@ -578,31 +651,38 @@ class SlickLauncher(QMainWindow):
 
     def on_focus_changed(self, old, now):
         # Quit if focus is lost (unless a child widget like preview gained focus)
-        if now is None or not self.isAncestorOf(now):
+        # IMPORTANT: Check if now is None explicitly, as it happens during shutdown
+        # Also check if 'now' is a Qt object before calling isAncestorOf
+        if now is None or (isinstance(now, QWidget) and not self.isAncestorOf(now)):
              # Add a small delay to prevent quitting if focus briefly shifts during interaction
              QTimer.singleShot(150, self._check_and_quit_on_focus_loss)
 
     def _check_and_quit_on_focus_loss(self):
         """Check if the window still lacks focus before quitting."""
-        if not self.isActiveWindow():
+        # Check isActiveWindow AND check if the application is not shutting down
+        if not self.isActiveWindow() and QApplication.instance() is not None:
              print("Focus lost, quitting.")
              self.quit()
 
     def focusOutEvent(self, event):
         # Fallback, though on_focus_changed is usually better
-        # self.quit()
+        # self.quit() # Removed direct quit here, rely on on_focus_changed
         super().focusOutEvent(event)
+
 
     def cleanup_plugins(self):
         """Call cleanup method on all loaded plugins before quitting."""
         print("Cleaning up plugins...")
-        self.aboutToQuit.emit() # Emit signal first (if plugins use it)
+        # Emit aboutToQuit signal for plugins that might connect to it
+        self.aboutToQuit.emit()
         for plugin in self.plugins:
             try:
+                # Check if the plugin instance has a callable 'cleanup' method
                 if hasattr(plugin, 'cleanup') and callable(plugin.cleanup):
                      plugin.cleanup()
             except Exception as e:
                 print(f"Error cleaning up plugin {plugin.NAME}: {e}", file=sys.stderr)
+
 
     def quit(self):
         # Don't call cleanup_plugins here directly, it's handled by app.aboutToQuit signal
