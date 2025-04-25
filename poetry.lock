@@ -4155,6 +4155,18 @@ Pillow = [
 ]
 
 [[package]]
+name = "python-string-utils"
+version = "1.0.0"
+description = "Utility functions for strings validation and manipulation."
+optional = false
+python-versions = ">=3.5"
+groups = ["main"]
+files = [
+    {file = "python-string-utils-1.0.0.tar.gz", hash = "sha256:dcf9060b03f07647c0a603408dc8b03f807f3b54a05c6e19eb14460256fac0cb"},
+    {file = "python_string_utils-1.0.0-py3-none-any.whl", hash = "sha256:f1a88700baf99db1a9b6953f44181ad9ca56623c81e257e6009707e2e7851fa4"},
+]
+
+[[package]]
 name = "python3-xlib"
 version = "0.15"
 description = "Python3 X Library"
@@ -4326,4 +4338,4 @@ typing-extensions = ">=4.12.0"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "f1c705506405fa4b59e2bea609f426acb057b0adafa7a8c99a9aab92f5e58757"
+content-hash = "536b9c53b9a1ef5cb146bddc7e3ce6d27d54c3ff498167ec74e58807ce2a4794"

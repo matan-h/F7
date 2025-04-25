@@ -4,13 +4,13 @@ import io
 import sys
 import builtins
 import rlcompleter
-import re
 
 from PyQt6.QtWidgets import QTextEdit, QLabel
-from .base_plugin import PluginInterface
-from ..python_utils import dotdict,smart_eval,repr_as_json,PyUtils,auto_parse,redirect_stdin
-from ..utils import WORD_BOUNDARY_RE
+from ..base_plugin import PluginInterface
+from .python_utils import dotdict,smart_eval,repr_as_json,PyUtils,auto_parse,redirect_stdin
+from ...utils import WORD_BOUNDARY_RE
 
+from .static_globals import static_globals
 
 class PythonEvalPlugin(PluginInterface):
     NAME = "Python Evaluator"
@@ -86,15 +86,16 @@ class PythonEvalPlugin(PluginInterface):
     
     def _create_context(self):
         ctx = dotdict(builtins.__dict__)
-        ctx.space = " "
-        ctx.lj = ctx.ljoin = ctx.lnjoin = ctx.linejoin = "\n".join
-        ctx.sjoin = ctx.spacejoin = " ".join
-        ctx.vjoin = ctx.voidjoin = "".join
+        # ctx.space = " "
+        # ctx.lj = ctx.ljoin = ctx.lnjoin = ctx.linejoin = "\n".join
+        # ctx.sjoin = ctx.spacejoin = " ".join
+        # ctx.vjoin = ctx.voidjoin = "".join
+        ctx.update(static_globals)
         return ctx
 
     def _update_context(self,text:str):
         ctx = dotdict()
-        ctx.raw = ctx.text = text
+        ctx.raw = ctx.text = ctx.s = ctx.txt = text
         ctx.lines = text.split("\n")
         ctx.words = text.split()
         ctx.chars = ctx.characters = list(text)

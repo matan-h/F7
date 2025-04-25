@@ -10,7 +10,7 @@ class dotdict(dict): # see https://stackoverflow.com/a/23689767
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
 
-# python spesific
+# python specific
 class PyUtils:
     """
     some utilities to make it easy to write and eval python programs
@@ -135,4 +135,3 @@ def auto_parse(text):
         except (base64.binascii.Error, ValueError,UnicodeDecodeError):
             pass
     return parsed
-
