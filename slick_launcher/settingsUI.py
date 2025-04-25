@@ -3,7 +3,6 @@ from PyQt6.QtWidgets import (
     QDialog, QTabWidget, QWidget, QFormLayout, QLabel,
     QCheckBox, QLineEdit, QComboBox, QSpinBox,
     QDialogButtonBox, QMessageBox, QVBoxLayout,QDoubleSpinBox,QPushButton,QColorDialog,QApplication,
-    QHBoxLayout # Import QHBoxLayout
 )
 import sys
 from PyQt6.QtGui import QColor, QColorConstants
@@ -13,6 +12,8 @@ from PyQt6.QtGui import QColor, QScreen, QValidator # Import QValidator
 
 from PyQt6.QtCore import pyqtSignal
 from .settings import Settings,Color
+
+from qt_material import apply_stylesheet
 
 # Custom validator for hex colors
 class HexColorValidator(QValidator):
@@ -73,7 +74,6 @@ class SettingsDialog(QDialog):
         self._original_values = settings._values.copy() # Store original values for Cancel
 
         self.widget_map = {}  # Maps (section, name) to {'enabled': widget, 'value': widget, 'meta': meta}
-
         self.setWindowTitle("Slick Launcher Settings")
 
         # Set size to ~80% of screen size, capped at 800x600
@@ -228,44 +228,11 @@ class SettingsDialog(QDialog):
         self.setLayout(main_layout)
 
         # Apply modern, high-contrast styling (kept from your code)
-        self.setStyleSheet("""
-            QLineEdit, QComboBox {
-    background: #22252d;
-    color: #d4d4d4;
-    border: 1px solid #4b5263;
-    border-radius: 4px;
-    padding: 6px;              /* uniform padding for standard text fields */
-}
-
-QSpinBox, QDoubleSpinBox {
-    background: #22252d;
-    color: #d4d4d4;
-    border: 1px solid #4b5263;
-    border-radius: 4px;
-    padding: 6px 15px 6px 6px; /* top/right/bottom/left: extra right padding for arrows */ :contentReference[oaicite:2]{index=2}
-    qproperty-buttonSymbols: UpDownArrows;
-}
-
-QSpinBox::up-button,
-QSpinBox::down-button,
-QDoubleSpinBox::up-button,
-QDoubleSpinBox::down-button {
-    subcontrol-origin: padding;
-    subcontrol-position: right center;
-    width: 20px;
-    height: 20px;
-    border: none;
-    background: #4b5263;
-}
-
-QSpinBox::up-arrow,
-QSpinBox::down-arrow,
-QDoubleSpinBox::up-arrow,
-QDoubleSpinBox::down-arrow {
-    /* Use the built-in arrows (or supply your own via image: url(...)) */
-}
-
-        """)
+        extra =     {
+            'density_scale': '-2',
+        }
+        return apply_stylesheet(self, theme='dark_teal.xml',extra=extra)
+        
     def pick_color(self, button: QPushButton):
         """Show a QColorDialog with alpha channel and update the button."""
         initial = button.property('currentColor') or QColor('#ffffffff')

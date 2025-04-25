@@ -19,6 +19,7 @@ from .plugins import plugins
 from .utils import WORD_BOUNDARY_RE
 from .settings import Settings,Color # Assuming Color class exists
 from appdirs import user_config_dir
+from qt_material import apply_stylesheet
 
 
 # --- Constants ---
@@ -689,7 +690,7 @@ class SlickLauncher(QMainWindow):
         print("Quit requested.")
         QApplication.quit()
 
-def main():
+def main(show_settings=False):
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True) # Ensure app exits cleanly
 
@@ -709,6 +710,8 @@ def main():
 
         # Set focus explicitly to the input field after showing
         launcher.input_field.setFocus()
+        if (show_settings):
+            launcher.open_settings()
         sys.exit(app.exec())
     except Exception as e:
          print(f"Critical error during application startup: {e}", file=sys.stderr)
