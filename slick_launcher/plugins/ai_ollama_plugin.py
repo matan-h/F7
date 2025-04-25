@@ -8,11 +8,9 @@ from PyQt6.QtWidgets import QTextEdit, QLabel
 from .base_plugin import PluginInterface
 
 # default sysprompt
-SYSPROMPT ="""
-You are a string tool. You'll get input as:
+SYSPROMPT ="""You are a string tool. You'll get input as:
 text:`<text>` request:`<operation>`
-Reply with exactly the transformed string—nothing else, no code fences or explanations.
-"""
+Reply with exactly the transformed string—nothing else, no code fences or explanations."""
 # Lazy-load modules to reduce startup time
 def _get_ollama_module():
     if not hasattr(_get_ollama_module, "_module"):

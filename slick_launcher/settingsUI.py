@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import (
     QDialog, QTabWidget, QWidget, QFormLayout, QLabel,
     QCheckBox, QLineEdit, QComboBox, QSpinBox,
-    QDialogButtonBox, QMessageBox, QVBoxLayout,QDoubleSpinBox,QPushButton,QColorDialog,QApplication,
+    QDialogButtonBox, QMessageBox, QVBoxLayout,QDoubleSpinBox,QPushButton,QColorDialog,QApplication,QTextEdit,
 )
 import sys
 from PyQt6.QtGui import QColor, QColorConstants
@@ -107,8 +107,8 @@ class SettingsDialog(QDialog):
                 enabled_widget = None
                 value_widget = None
 
-                # Handle nullable settings with a checkbox
-                if meta.get('nullable'):
+                # Handle nullable (now based on default being None)
+                if meta.get('default') is None:  
                     enabled_widget = QCheckBox("Enable")
                     # Initial state based on whether the current value is None
                     enabled_widget.setChecked(value is not None)
@@ -126,9 +126,14 @@ class SettingsDialog(QDialog):
                     value_widget.setCurrentText(initial_text)
 
                 elif meta['type'] == str:
-                    value_widget = QLineEdit()
-                     # Set initial text, default to empty string if value is None or not a string
-                    value_widget.setText(value if isinstance(value, str) else "")
+                    # Check if default contains newlines for multiline
+                    default = meta.get('default')
+                    if isinstance(default, str) and '\n' in default:
+                        value_widget = QTextEdit()
+                        value_widget.setPlainText(value if isinstance(value, str) else "")
+                    else:
+                        value_widget = QLineEdit()
+                        value_widget.setText(value if isinstance(value, str) else "")
                 elif meta['type'] == int:
                     value_widget = QSpinBox()
                     value_widget.setMinimum(-1000 - 1) # Use system max size for robustness
@@ -231,7 +236,15 @@ class SettingsDialog(QDialog):
         extra =     {
             'density_scale': '-2',
         }
-        return apply_stylesheet(self, theme='dark_teal.xml',extra=extra)
+        apply_stylesheet(self, theme='dark_teal.xml',extra=extra)
+        # too bold color for the selector. hard to see.
+        css = """
+QComboBox::item:selected {
+    background-color: grey;
+}
+        """
+        stylesheet = self.styleSheet()
+        self.setStyleSheet(stylesheet + css)
         
     def pick_color(self, button: QPushButton):
         """Show a QColorDialog with alpha channel and update the button."""
@@ -314,6 +327,9 @@ class SettingsDialog(QDialog):
                          new_value = value_widget.currentText()
                     elif setting_type == str and widget_type == QLineEdit:
                          new_value = value_widget.text()
+                    elif setting_type == str and widget_type == QTextEdit:  # New case
+                        new_value = value_widget.toPlainText()
+
                     elif setting_type == int and widget_type == QSpinBox:
                          new_value = value_widget.value()
                     elif setting_type == float and widget_type == QDoubleSpinBox:
