@@ -1,4 +1,5 @@
 # slick_launcher.py
+from contextlib import contextmanager
 import os
 import sys,traceback
 
@@ -33,11 +34,13 @@ class SlickLauncher(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.config_dir = user_config_dir("slick_launcher")
         self.selected_text = ""
         self.plugins = []
         self.active_plugin = None
         self.completer = None
         self.completion_model = None
+        self.do_not_trigger_AC_flag = False # if the autocomplete just complete, another completion on top of the other completion, without user iteration crash the program
 
         # Initialize settings before anything else
         self.settings = Settings()
@@ -48,12 +51,51 @@ class SlickLauncher(QMainWindow):
             plugin.register_settings(self.settings)  # Let plugins register their settings
 
         self.load_settings()    # Load from TOML after all registrations
+        self.init_history()  
         self.initUI()
         self.capture_initial_selection() # Get text immediately
         self.resetStatus() # Set initial status based on default plugin
 
-        # The connection for reloading visual settings will be made
-        # when the SettingsDialog is opened.
+        if self.settings.system.rememberLast and self.history:
+            self.input_field.setText(self.history[-1])
+    
+    @contextmanager
+    def suppress_AC(self):
+        # // FIXME: fix the problem: insert -> if autocomplete-> autocomplete->insert back.
+        self.do_not_trigger_AC_flag = True; yield; self.do_not_trigger_AC_flag = False
+
+
+    def init_history(self):
+        """Initialize command history from file"""
+        self.history_path = os.path.join(self.config_dir, "history.txt")
+        self.history = []
+        if os.path.exists(self.history_path):
+            try:
+                with open(self.history_path, 'r', encoding='utf-8') as f:
+                    self.history = [line.strip() for line in f if line.strip()]
+            except Exception as e:
+                print(f"Error loading history: {e}")
+        self.current_history_index = len(self.history)
+        self.ignore_text_changed = False
+    
+    def save_history(self):
+        """Save command history to file"""
+        if not self.settings.system.history:
+            return
+        
+        history_path = self.history_path
+        try:
+            with open(history_path, 'w', encoding='utf-8') as f:
+                for cmd in self.history:
+                    f.write(f"{cmd}\n")
+        except Exception as e:
+            print(f"Error saving history: {e}")
+    
+    def reset_history_index(self):
+        """Reset history index when user manually edits text"""
+        if not self.ignore_text_changed:
+            self.current_history_index = len(self.history)
+
 
     def register_main_settings(self):
         """Register the core settings for Slick Launcher."""
@@ -69,15 +111,14 @@ class SlickLauncher(QMainWindow):
         system = self.settings.section("system")
         system.add("closeOnBlur", "Close launcher when it loses focus", True, bool)
         system.add("doComplete", "Enable autocompletion", True, bool)
-        system.add("alwaysComplete", "Always show completions without waiting for '.'", False, bool)
-        system.add("rememberLast", "Remember the last command", True, bool)
+        system.add("alwaysComplete", "show completions without waiting for '.'", False, bool)
+        system.add("rememberLast", "Remember the last command", False, bool)
         system.add("history", "Enable command history", True, bool)
 
     def load_settings(self):
         """Load settings from the TOML file in the OS-appropriate directory."""
-        config_dir = user_config_dir("slick_launcher", "your_company_name")
-        os.makedirs(config_dir, exist_ok=True)
-        toml_path = os.path.join(config_dir, "settings.toml")
+        os.makedirs(self.config_dir, exist_ok=True)
+        toml_path = os.path.join(self.config_dir, "settings.toml")
         self.settings.load_from_toml(toml_path)
 
     def load_plugins(self):
@@ -332,7 +373,7 @@ class SlickLauncher(QMainWindow):
             self._focus_changed_connection = None # Clear the stored object
 
 
-    def handle_input_change(self,manual_trigger=False): # Removed manual=False, not needed here now
+    def handle_input_change(self,manual_trigger=False): 
         """Called when text in the input field changes."""
         command = self.input_field.text()
         if (command=="/settings"):
@@ -370,7 +411,9 @@ class SlickLauncher(QMainWindow):
             self.settings.system.alwaysComplete or
             (command and cursor_pos > 0 and command[cursor_pos - 1] == '.')
         )
-
+        if (self.do_not_trigger_AC_flag or not command):
+            should_trigger_completion = False
+        
         completions_updated = False # Flag to know if plugin provided new list
         if self.settings.system.doComplete and self.active_plugin.HAS_AUTOCOMPLETE:
              if should_trigger_completion:
@@ -466,8 +509,9 @@ class SlickLauncher(QMainWindow):
         new_cursor_pos = start_pos + len(completion)
 
         # Set the text and move cursor
-        self.input_field.setText(new_text)
-        self.input_field.setCursorPosition(new_cursor_pos)
+        with self.suppress_AC():
+            self.input_field.setText(new_text)
+            self.input_field.setCursorPosition(new_cursor_pos)
 
         # Hide the popup after inserting
         self.completer.popup().hide()
@@ -477,6 +521,29 @@ class SlickLauncher(QMainWindow):
             key = event.key()
             modifiers = event.modifiers()
             is_completer_visible = self.completer.popup().isVisible()
+            # Handle history navigation
+            if not is_completer_visible and self.settings.system.history:
+                if key == Qt.Key.Key_Up:
+                    if self.current_history_index > 0:
+                        self.ignore_text_changed = True
+                        self.current_history_index -= 1
+                        text = self.history[self.current_history_index]
+                        self.input_field.setText(text)
+                        self.input_field.setCursorPosition(len(text))
+                        self.ignore_text_changed = False
+                        return True
+                elif key == Qt.Key.Key_Down:
+                    if self.current_history_index < len(self.history):
+                        self.ignore_text_changed = True
+                        self.current_history_index += 1
+                        if self.current_history_index < len(self.history):
+                            text = self.history[self.current_history_index]
+                            self.input_field.setText(text)
+                            self.input_field.setCursorPosition(len(text))
+                        else:
+                            self.input_field.clear()
+                        self.ignore_text_changed = False
+                        return True
 
             # --- Manual Completion Trigger ---
             if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_Space:
@@ -611,8 +678,15 @@ class SlickLauncher(QMainWindow):
         if not self.active_plugin:
             self.status_bar.setText("No plugin active to execute.")
             return
+        # Save to history before execution
+        if self.settings.system.history and command_raw.strip():
+            if not self.history or self.history[-1] != command_raw:
+                self.history.append(command_raw)
+                self.current_history_index = len(self.history)
+                self.save_history()
 
-        # Determine the actual command text to pass to the plugin
+
+        # Determine the actual command text to pass to the plugin. TODO: do that also on preview. actually there is almost no change between this and the preview
         # (strip prefix/suffix if they match the active plugin)
         command_to_execute = command_raw
         if self.active_plugin.PREFIX and command_raw.startswith(self.active_plugin.PREFIX):
@@ -622,6 +696,7 @@ class SlickLauncher(QMainWindow):
         # Note: Default plugins receive the raw command
 
         print(f"Executing with plugin '{self.active_plugin.NAME}': '{command_to_execute}'")
+        
 
         try:
             # Execute and get potential result for clipboard
