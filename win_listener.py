@@ -14,24 +14,33 @@ LAUNCHER_MOD = "slick_launcher"
 
 # --- Listener Logic ---
 last_shift_press_time = 0
+shift_pressed = False
 
 def on_key_event(event):
     """Callback function for keyboard events."""
     global last_shift_press_time
+    global shift_pressed
 
-    # We only care about Shift key presses (KEY_DOWN)
-    if event.event_type == keyboard.KEY_DOWN and event.name in  ['shift', 'right shift']:
-        current_time = time.time()
-        time_diff = current_time - last_shift_press_time
+    if event.name in ['shift', 'right shift']:
+        if event.event_type == keyboard.KEY_DOWN:
+            # Only consider a new press if the key is not already pressed
+            if not shift_pressed:
+                shift_pressed = True
+                current_time = time.time()
+                time_diff = current_time - last_shift_press_time
 
-        # Check if the second press happened within the interval
-        if time_diff < DOUBLE_PRESS_INTERVAL and time_diff > 0: # time_diff > 0 prevents triggering on initial press
-            print("Double Shift detected! Launching Slick Launcher...")
-            launch_slick_launcher()
-            last_shift_press_time = 0 # Reset to avoid triple/quadruple triggers
-        else:
-            # This is the first press (or too slow)
-            last_shift_press_time = current_time
+                # Check if the second press happened within the interval
+                if time_diff < DOUBLE_PRESS_INTERVAL and time_diff > 0:  # time_diff > 0 prevents triggering on initial press
+                    print("Double Shift detected! Launching Slick Launcher...")
+                    launch_slick_launcher()
+                    last_shift_press_time = 0  # Reset to avoid triple/quadruple triggers
+                else:
+                    # This is the first press (or too slow)
+                    last_shift_press_time = current_time
+
+        elif event.event_type == keyboard.KEY_UP:
+            # Reset the flag when the key is released
+            shift_pressed = False
 
 def launch_slick_launcher():
     """Launches the Slick Launcher application."""
