@@ -65,17 +65,18 @@ class SlickLauncher(singleInstance):
             self.input_field.setText(self.history[-1])
     
     def process_socket_command(self,data:str):
+        data = data.strip()
         match data:
             case "show":
                 self.show_window()
                 return
-            case _:
-                print("unknown command from socket:",_)
+            case _ as d:
+                print("unknown command from socket:",repr(d))
         
     
     @contextmanager
     def suppress_AC(self):
-        # // FIXME: fix the problem: insert -> if autocomplete-> autocomplete->insert back.
+        # this fix the problem: insert -> if autocomplete-> autocomplete->insert back.
         self.do_not_trigger_AC_flag = True; yield; self.do_not_trigger_AC_flag = False
 
 
@@ -813,9 +814,14 @@ class SlickLauncher(singleInstance):
 
 
 def main(argv:list):
-    if "show" in argv:
-        if send_socket_command("show"):
-            sys.exit(0)
+    """
+    show: start it shown
+    -notray: do not start on tray (overrides launcher.settings.system.startInTray to false)
+    settings: open settings
+    """
+    if send_socket_command("show"): # another instance found.
+        print("show command sent.")
+        sys.exit(0)
 
 
     app = QApplication(argv)
@@ -839,7 +845,6 @@ def main(argv:list):
             launcher.open_settings()
         
         elif launcher.settings.system.startInTray:
-            print("enter")
             launcher.setup_tray_icon()
         
         sys.exit(app.exec())

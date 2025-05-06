@@ -5,10 +5,10 @@ from PyQt6.QtCore import QByteArray
 from abc import ABC,abstractmethod,ABCMeta
 
 
-SERVER_NAME = "slick_lancher"  # Ensure this is unique
+SERVER_NAME = "slick_launcher"  # Ensure this is unique
 
 def send_socket_command(command:str):
-    """Sends the 'show' command to an existing instance."""
+    """Sends a command to an existing instance."""
     socket = QLocalSocket()
     socket.connectToServer(SERVER_NAME)
     if socket.waitForConnected(1000):
@@ -24,7 +24,6 @@ class Meta(type(QMainWindow), ABCMeta):
 
 class singleInstance(QMainWindow,metaclass=Meta):
     def __init__(self):
-        # self.app = QApplication(sys.argv)
         
         # Set up the local server
         self.server = QLocalServer()
@@ -35,10 +34,10 @@ class singleInstance(QMainWindow,metaclass=Meta):
     
     def setup_server(self):
         """Starts the local server, ensuring single instance."""
-        # Remove any existing server (in case of crash)
+        # Remove any existing server (in case of crash), note that QLocalServer.removeServer return true if there was a server like that.
         QLocalServer.removeServer(SERVER_NAME)
         if not self.server.listen(SERVER_NAME):
-            print("Another instance is already running.", file=sys.stderr)
+            print("Failed to start single instance server.", file=sys.stderr)
             sys.exit(1)
 
     def handle_new_connection(self):
