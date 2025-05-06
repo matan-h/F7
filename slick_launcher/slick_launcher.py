@@ -829,7 +829,6 @@ def main(argv:list):
     try:
         launcher = SlickLauncher()
         if ("-notray" in argv):
-            print("enter2")
             launcher.settings.system.startInTray = False
 
         if("show" in argv or "settings" in argv) or not launcher.settings.system.startInTray:
