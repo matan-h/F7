@@ -641,12 +641,11 @@ class SlickLauncher(singleInstance):
         """Adjusts window height based on visible elements."""
         QTimer.singleShot(0, self.adjust_preview_height)
 
-
     def adjust_preview_height(self):
-        # by gemini
+        # largly by gemini
         # Get the QTextDocument associated with the QTextEdit
         document = self.preview_output.document()
-
+        
         # Get the required height of the document's content based on layout
         # This correctly accounts for wrapping, font, and explicit newlines
         content_height = document.size().height()
@@ -655,14 +654,14 @@ class SlickLauncher(singleInstance):
         font_metrics = QFontMetrics(self.preview_output.font())
         line_height = font_metrics.lineSpacing()
 
-        # Define padding and frame space (as in the original function)
+        # Define padding and frame space 
         padding_vertical = 4 * 2  # Assuming this is internal padding/margin
         frame_vertical_thickness = self.preview_output.frameWidth() * 2 # Top + Bottom frame thickness
 
         # Calculate the total height required for the content area + padding + frame
         required_total_height = content_height + padding_vertical + frame_vertical_thickness
 
-        # Calculate the maximum height based on 5 lines (as in the original function)
+        # Calculate the maximum height based on 5 lines 
         max_height_5_lines = 5 * line_height + padding_vertical + frame_vertical_thickness
 
         # Apply the maximum height constraint
@@ -673,20 +672,18 @@ class SlickLauncher(singleInstance):
         if not document.isEmpty():
             self.preview_output.setFixedHeight(int(final_set_height))
             self.preview_output.show()
+            QTimer.singleShot(0, self.adjustSize)
         else:
             # If empty, potentially set a minimum height or hide
             # Original hides, so let's keep that logic
             self.hide_preview()
-
-        # Adjust the main window height (as in the original function)
-        self.adjustSize()
 
 
 
     def hide_preview(self):
         """Utility to hide preview and adjust height."""
         self.preview_output.hide()
-        self.preview_output.setFixedHeight(0)
+        QTimer.singleShot(0, self.adjustSize)
 
     def execute_command(self):
         """Executes the command using the currently active plugin."""
@@ -775,7 +772,7 @@ class SlickLauncher(singleInstance):
                 print(f"Error cleaning up plugin {plugin.NAME}: {e}", file=sys.stderr)
     
     def reset(self):
-                # Dynamically clear or reset UI elements in the main layout
+        # Dynamically clear or reset UI elements in the main layout
         layout = self.main_widget.layout()
         for i in range(layout.count()):
             widget = layout.itemAt(i).widget()
@@ -785,15 +782,17 @@ class SlickLauncher(singleInstance):
             elif isinstance(widget, QTextEdit):
                 widget.clear()
 
-        self.resetStatus()  
+        self.resetStatus()
         self.hide_preview() 
+        # self.adjust_preview_height()
 
 
     def close(self):
         if self.settings.system.startInTray:
             self.reset()
-            return super().close()
-        self.quit()
+            QTimer.singleShot(0, super().close)
+        else:
+            self.quit()
 
     def quit(self):
         # Don't call cleanup_plugins here directly, it's handled by app.aboutToQuit signal
