@@ -1,5 +1,6 @@
 # plugins/base_plugin.py
 from abc import ABC, abstractmethod
+from PyQt6.QtCore import QThread
 from PyQt6.QtWidgets import QTextEdit, QLabel
 
 class PluginInterface(ABC):
@@ -32,7 +33,7 @@ class PluginInterface(ABC):
                                but use sparingly to maintain decoupling.
         """
         self.launcher = launcher_instance
-        pass
+        self.active_workers = []  # Track active background workers
 
     @abstractmethod
     def get_status_message(self) -> str:
@@ -95,8 +96,17 @@ class PluginInterface(ABC):
 
 
     def cleanup(self) -> None:
-        """
-        Optional method to clean up resources (e.g., stop threads) when the launcher quits
-        or the plugin is deactivated.
-        """
-        pass # Default implementation does nothing
+        """Optional: Clean up resources, including stopping any active workers."""
+        for worker in self.active_workers[:]:
+            if isinstance(worker, QThread) and worker.isRunning():
+                worker.stop()  # Ensure worker has a stop() method
+                worker.quit()
+                worker.wait(1000)
+                if worker.isRunning():
+                    worker.terminate()
+                    worker.wait()
+            self.active_workers.remove(worker)
+        instance_cleanup = getattr(super(),"cleanup",None)
+
+        if instance_cleanup:
+            instance_cleanup()

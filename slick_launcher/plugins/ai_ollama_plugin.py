@@ -1,20 +1,16 @@
 # plugins/ai_ollama_plugin.py
-import importlib
 import re
 import os
 from PyQt6.QtCore import QThread, pyqtSignal, QTimer
-from PyQt6.QtGui import QTextCursor
 from PyQt6.QtWidgets import QTextEdit, QLabel
 from .base_plugin import PluginInterface
 from ..utils import dotdict
-# default sysprompt
-SYSPROMPT ="""You are a string tool. You'll get input as:
+
+SYSPROMPT = """You are a string tool. You'll get input as:
 text:`<text>` request:`<operation>`
 Reply with exactly the transformed string—nothing else, no code fences or explanations."""
-# Lazy-load modules to reduce startup time
 
 class AIStreamWorker(QThread):
-    """Worker thread for handling AI streaming with Ollama or llama_cpp."""
     chunk_received = pyqtSignal(str)
     finished_signal = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
@@ -26,122 +22,99 @@ class AIStreamWorker(QThread):
         self.settings = settings
         self._is_running = True
 
-
     def run(self):
-        """Execute the appropriate backend based on settings."""
         backend = self.settings.backend
         full_response = ""
-        in_block = False  # Inside ```...```
-        in_declare = False  # Inside ```lang declaration
-
-        if backend == "ollama":
-            try:
+        
+        try:
+            if backend == "ollama":
                 import ollama
-
-                options = {
-                    k: v for k, v in {
-                        "temperature": self.settings.temperature,
-                        "top_p": self.settings.top_p,
-                        "frequency_penalty": self.settings.frequency_penalty,
-                        "presence_penalty": self.settings.presence_penalty,
-                        "seed": self.settings.seed,
-                        "stop": self.settings.stop_sequences,
-                        "num_predict": self.settings.max_tokens,
-                    }.items() if v is not None
-                }
-                messages = [{"role": "user", "content": f"text:```\n{self.text}\n```\nUser request:{self.msg}"}]
-                if self.settings.system_prompt is not None:
+                messages = [{
+                    "role": "user", 
+                    "content": f"text:```\n{self.text}\n```\nUser request:{self.msg}"
+                }]
+                if self.settings.system_prompt:
                     messages.insert(0, {"role": "system", "content": self.settings.system_prompt})
+                
                 response = ollama.chat(
                     model=self.settings.ollama_model,
                     messages=messages,
                     stream=True,
-                    options=options
+                    options=self._get_ollama_options()
                 )
+                
                 for chunk in response:
                     if not self._is_running:
                         break
                     content = chunk.get('message', {}).get('content', '')
                     full_response += content
-                    # Handle code block filtering
-                    if content.strip().startswith("```"):
-                        if not in_block:
-                            in_declare = True
-                        else:
-                            in_block = False
-                            continue
-                    if in_declare:
-                        if "\n" in content:
-                            in_declare = False
-                            in_block = True
-                        continue
-                    if in_block:
-                        self.chunk_received.emit(content)
-                if self._is_running:
-                    self.finished_signal.emit(full_response)
-            except Exception as e:
-                self.error_occurred.emit(f"Ollama Error: {str(e)}")
-        elif backend == "llama_cpp":
-            if not os.path.exists(self.settings.llama_cpp_model):
-                self.error_occurred.emit(f"Model file not found: {self.settings.llama_cpp_model}")
-                return
-            
-            import llama_cpp
-            kw = dotdict()
-            kw.n_threads = self.settings.llama_cpp_n_threads or (os.cpu_count() or 4)
-            if self.settings.llama_cpp_use_GPU:
-                kw.n_gpu_layers = -1
-            try:
-                llm = llama_cpp.Llama(model_path=self.settings.llama_cpp_model,verbose=False,
-                                      **kw)
+                    self.chunk_received.emit(content)
 
-                prompt = f"USER: `{self.msg}`\ntext:```\n{self.text}\n```"
-                if self.settings.system_prompt is not None:
-                    prompt = f"{self.settings.system_prompt}\n{prompt}"
-                options = {
-                    k: v for k, v in {
-                        "max_tokens": self.settings.max_tokens,
-                        "temperature": self.settings.temperature,
-                        "top_p": self.settings.top_p,
-                        "frequency_penalty": self.settings.frequency_penalty,
-                        "presence_penalty": self.settings.presence_penalty,
-                        "stop": self.settings.stop_sequences,
-                    }.items() if v is not None
-                }
+            elif backend == "llama_cpp":
+                if not os.path.exists(self.settings.llama_cpp_model):
+                    raise FileNotFoundError(f"Model file not found: {self.settings.llama_cpp_model}")
+                
+                import llama_cpp
+                llm = llama_cpp.Llama(
+                    model_path=self.settings.llama_cpp_model,
+                    verbose=False,
+                    **self._get_llama_cpp_kwargs()
+                )
+                
+                prompt = self._build_llama_prompt()
                 response = llm.create_completion(
                     prompt,
                     stream=True,
-                    **options
+                    **self._get_llama_options()
                 )
+                
                 for chunk in response:
-                    print("C:",chunk)
                     if not self._is_running:
                         break
                     content = chunk['choices'][0]['text']
                     full_response += content
-                    # Handle code block filtering
-                    if content.strip().startswith("```"):
-                        if not in_block:
-                            in_declare = True
-                        else:
-                            in_block = False
-                            continue
-                    if in_declare:
-                        if "\n" in content:
-                            in_declare = False
-                            in_block = True
-                        continue
-                    if in_block:
-                        self.chunk_received.emit(content)
-                if self._is_running:
-                    self.finished_signal.emit(full_response)
-            except Exception as e:
-                self.error_occurred.emit(f"llama_cpp Error: {str(e)}")
-        else:
-            self.error_occurred.emit("Invalid backend specified")
+                    self.chunk_received.emit(content)
+
+            if self._is_running:
+                self.finished_signal.emit(full_response)
+
+        except Exception as e:
+            self.error_occurred.emit(f"{backend} Error: {str(e)}")
+
+    # Helper methods for backend configurations
+    def _get_ollama_options(self):
+        return {k: v for k, v in {
+            "temperature": self.settings.temperature,
+            "top_p": self.settings.top_p,
+            "frequency_penalty": self.settings.frequency_penalty,
+            "presence_penalty": self.settings.presence_penalty,
+            "seed": self.settings.seed,
+            "stop": self.settings.stop_sequences,
+            "num_predict": self.settings.max_tokens,
+        }.items() if v is not None}
+
+    def _get_llama_cpp_kwargs(self):
+        kwargs = dotdict()
+        kwargs.n_threads = self.settings.llama_cpp_n_threads or (os.cpu_count() or 4)
+        if self.settings.llama_cpp_use_GPU:
+            kwargs.n_gpu_layers = -1
+        return kwargs
+
+    def _build_llama_prompt(self):
+        base = f"USER: `{self.msg}`\ntext:```\n{self.text}\n```"
+        return f"{self.settings.system_prompt}\n{base}" if self.settings.system_prompt else base
+
+    def _get_llama_options(self):
+        return {k: v for k, v in {
+            "max_tokens": self.settings.max_tokens,
+            "temperature": self.settings.temperature,
+            "top_p": self.settings.top_p,
+            "frequency_penalty": self.settings.frequency_penalty,
+            "presence_penalty": self.settings.presence_penalty,
+            "stop": self.settings.stop_sequences,
+        }.items() if v is not None}
 
     def stop(self):
-        """Signal the thread to stop processing."""
         self._is_running = False
 
 class AiOllamaPlugin(PluginInterface):
@@ -153,11 +126,18 @@ class AiOllamaPlugin(PluginInterface):
 
     def __init__(self, launcher_instance):
         super().__init__(launcher_instance)
-        self.ai_worker = None
-        self.is_first_chunk = True
-        self.accumulated_result = ""
-        self.last_preview_command = None
-        self.last_preview_result = None
+        self.current_stream = None
+        self.preview_state = {
+            'buffer': '',
+            'last_command': None,
+            'last_result': None,
+            'current_visible': ''
+        }
+        self.execution_state = {
+            'buffer': '',
+            'current_visible': '',
+            'active': False
+        }
 
     def register_settings(self, settings):
         """Register plugin settings with the launcher."""
@@ -178,117 +158,158 @@ class AiOllamaPlugin(PluginInterface):
         ai_section.add("seed", "Random seed for reproducibility", None, int)
         ai_section.add("stop_sequences", "Sequences to stop generation", None, list)
 
+        # ... (settings registration remains same) ...
+
     def extract_code_block(self, text: str) -> str:
-        """Extract content from the first code block, if present."""
-        match = re.search(r'```(?:\w+)?\n(.*?)\n```', text, re.DOTALL)
-        if match:
-            return match.group(1).strip()
-        return text.strip()
+        """Improved code block extraction with partial matching support"""
+        open_match = re.search(r'```(?:[\w\-\+]+)?\n(.*)', text, re.DOTALL)
+        if not open_match:
+            return text.strip()
+        
+        content = open_match.group(1)
+        close_match = re.search(r'\n```', content)
+        return content[:close_match.start()].strip() if close_match else content.strip()
 
     def get_status_message(self) -> str:
-        """Display the current backend and model in the status bar."""
         backend = self.launcher.settings.ai_ollama.backend
         model = (self.launcher.settings.ai_ollama.ollama_model if backend == "ollama"
-                 else self.launcher.settings.ai_ollama.llama_cpp_model)
-        return f"🤖 AI mode ({backend}: {model}) - Ctrl+Enter to preview, Enter to execute"
+                 else os.path.basename(self.launcher.settings.ai_ollama.llama_cpp_model))
+        return f"🤖 {backend} ({model}) - Ctrl+Enter: preview, Enter: execute"
 
-    def _start_ai_stream(self, command: str, selected_text: str, preview_widget: QTextEdit, status_widget: QLabel, for_preview: bool):
-        """Start or restart the AI worker thread with the configured settings."""
+    def _start_stream(self, command: str, selected_text: str, is_preview: bool):
+        """Common method to start both preview and execution streams"""
         self._cleanup_worker()
-        self.is_first_chunk = True
+        
+        # Reset state
+        if is_preview:
+            self.preview_state = {
+                'buffer': '',
+                'last_command': command,
+                'last_result': None,
+                'current_visible': ''
+            }
+        else:
+            self.execution_state = {'buffer': '', 'current_visible': '','active': True}
+
+        # UI setup
+        preview_widget = self.launcher.preview_output
+        status_widget = self.launcher.status_bar
+        
         preview_widget.setPlainText("AI: Generating...")
         preview_widget.show()
-        status_widget.setText("⏳ Contacting AI...")
+        status_widget.setText("⏳ Contacting AI..." if is_preview else "⏳ Processing...")
         self.launcher.adjustHeight()
 
-        self.ai_worker = AIStreamWorker(command, selected_text, self.launcher.settings.ai_ollama)
-        if for_preview:
-            self.ai_worker.chunk_received.connect(lambda chunk: self._update_preview_text(chunk, preview_widget))
-            self.ai_worker.finished_signal.connect(lambda fr: self._handle_preview_finished(fr, status_widget))
-            self.ai_worker.error_occurred.connect(lambda err: self._handle_ai_error(err, preview_widget, status_widget))
-        else:
-            self.accumulated_result = ""
-            self.ai_worker.chunk_received.connect(self._accumulate_ai_result)
-            self.ai_worker.finished_signal.connect(self._finalize_ai_command)
-            self.ai_worker.error_occurred.connect(lambda err: self._handle_ai_error(err, preview_widget, status_widget, is_final_error=True))
-        self.ai_worker.start()
-        # Apply timeout
-        if self.launcher.settings.ai_ollama.timeout > 0:
-            QTimer.singleShot(self.launcher.settings.ai_ollama.timeout * 1000, self.ai_worker.stop)
+        # Create worker
+        self.current_stream = AIStreamWorker(
+            command, selected_text, self.launcher.settings.ai_ollama
+        )
+        self.active_workers.append(self.current_stream)
 
-    def update_preview(self, command: str, selected_text: str, preview_widget: QTextEdit, status_widget: QLabel, manual: bool) -> None:
-        """Handle preview generation on Ctrl+Enter."""
+        # Connect common signals
+        self.current_stream.chunk_received.connect(
+            lambda c: self._handle_chunk(c, is_preview)
+        )
+        self.current_stream.error_occurred.connect(
+            lambda e: self._handle_error(e, is_preview)
+        )
+        self.current_stream.finished_signal.connect(
+            lambda r: self._handle_completion(r, is_preview)
+        )
+
+        # Start processing
+        self.current_stream.start()
+        if self.launcher.settings.ai_ollama.timeout > 0:
+            QTimer.singleShot(
+                self.launcher.settings.ai_ollama.timeout * 1000,
+                self.current_stream.stop
+            )
+
+    def _handle_chunk(self, chunk: str, is_preview: bool):
+        """Process incoming chunks for both preview and execution"""
+        target_state = self.preview_state if is_preview else self.execution_state
+        print(chunk,end='')
+        target_state['buffer'] += chunk
+        
+        processed = self.extract_code_block(target_state['buffer'])
+        widget = self.launcher.preview_output
+        
+        if processed != target_state['current_visible']:
+            widget.setPlainText(f"AI: {processed}")
+            target_state['current_visible'] = processed
+            self.launcher.adjustHeight()
+
+    def _handle_completion(self, full_response: str, is_preview: bool):
+        """Final processing after stream completes"""
+        if is_preview:
+            # Store both raw and processed result
+            self.preview_state['last_result'] = self.extract_code_block(full_response)
+            self.preview_state['buffer'] = full_response
+            self.launcher.status_bar.setText("✅ Preview ready - Ctrl+Enter to refresh")
+        else:
+            # Use the accumulated buffer rather than full_response for consistency
+            result = self.extract_code_block(self.execution_state['buffer'])
+            print("copy",repr(result),"exacted from",repr(self.execution_state['buffer']))
+            self.launcher.copy(result)
+
+    def _handle_error(self, error_msg: str, is_preview: bool):
+        """Error handling for both modes"""
+        widget = self.launcher.preview_output
+        widget.setPlainText(error_msg)
+        widget.show()
+        
+        status = self.launcher.status_bar
+        status.setText("❌ Error: " + ("preview failed" if is_preview else "execution failed"))
+
+    def update_preview(self, command: str, selected_text: str, 
+                      preview_widget: QTextEdit, status_widget: QLabel, manual: bool):
         if not manual:
             preview_widget.hide()
             self._cleanup_worker()
             return
+            
         ai_command = command.lstrip(self.PREFIX)
         if not ai_command:
             preview_widget.hide()
             self._cleanup_worker()
             return
-        self.last_preview_command = ai_command
-        self._start_ai_stream(ai_command, selected_text, preview_widget, status_widget, for_preview=True)
-
-    def _update_preview_text(self, chunk: str, preview_widget: QTextEdit):
-        """Update the preview widget with streaming chunks."""
-        if self.is_first_chunk:
-            preview_widget.setPlainText("AI: ")
-            self.is_first_chunk = False
-        cursor = preview_widget.textCursor()
-        cursor.movePosition(QTextCursor.MoveOperation.End)
-        cursor.insertText(chunk)
-        preview_widget.ensureCursorVisible()
-        self.launcher.adjustHeight()
-
-    def _handle_preview_finished(self, full_response: str, status_widget: QLabel):
-        """Update status and store result when preview streaming completes."""
-        self.last_preview_result = self.extract_code_block(full_response)
-        status_widget.setText("✅ AI preview complete - Ctrl+Enter to re-gen")
-        self.launcher.adjustHeight()
-
-    def _handle_ai_error(self, error_msg: str, preview_widget: QTextEdit, status_widget: QLabel, is_final_error: bool = False):
-        """Display errors in the UI."""
-        preview_widget.setPlainText(error_msg)
-        preview_widget.show()
-        status_widget.setText("❌ AI Error occurred")
-        self.launcher.adjustHeight()
-        if is_final_error:
-            QTimer.singleShot(3000, self.launcher.quit)
+            
+        # Always reset preview state when starting new preview
+        if ai_command != self.preview_state.get('last_command'):
+            self.preview_state = {
+                'buffer': '',
+                'last_command': ai_command,
+                'last_result': None,
+                'current_visible': ''
+            }
+            
+        self._start_stream(ai_command, selected_text, is_preview=True)
 
     def execute(self, command: str, selected_text: str) -> str | None:
-        """Handle final execution on Enter."""
-        status_widget = self.launcher.status_bar
-        preview_widget = self.launcher.preview_output
         ai_command = command.lstrip(self.PREFIX)
-        if self.last_preview_command and ai_command == self.last_preview_command and self.last_preview_result is not None:
-            self.launcher.copy(self.last_preview_result)
+        
+        if ai_command == self.preview_state.get('last_command') and self.preview_state.get('last_result'):
+            self.launcher.copy(self.preview_state['last_result'])
             return None
-        status_widget.setText("⏳ Processing AI command...")
-        self.launcher.hide_preview()
-        self._start_ai_stream(ai_command, selected_text, preview_widget, status_widget, for_preview=False)
+            
+        # Reset execution state before starting
+        self.execution_state = {
+            'buffer': '',
+            'current_visible': '',
+            'active': True
+        }
+        self._start_stream(ai_command, selected_text, is_preview=False)
         return None
 
-    def _accumulate_ai_result(self, chunk: str):
-        """Accumulate chunks for the final result."""
-        self.accumulated_result += chunk
-
-    def _finalize_ai_command(self, full_result: str):
-        """Copy the final result to the clipboard and clean up."""
-        cleaned_result = self.extract_code_block(full_result)
-        self.launcher.copy(cleaned_result)
-
     def _cleanup_worker(self):
-        """Stop and clean up the AI worker thread."""
-        if self.ai_worker and self.ai_worker.isRunning():
-            self.ai_worker.stop()
-            self.ai_worker.quit()
-            self.ai_worker.wait(1000)
-            if self.ai_worker.isRunning():
-                self.ai_worker.terminate()
-                self.ai_worker.wait()
-        self.ai_worker = None
+        if self.current_stream and self.current_stream.isRunning():
+            self.current_stream.stop()
+            self.current_stream.quit()
+            self.current_stream.wait(1000)
+            if self.current_stream.isRunning():
+                self.current_stream.terminate()
+            self.current_stream = None
 
-    def cleanup(self) -> None:
-        """Ensure cleanup when the launcher quits."""
+    def cleanup(self):
+        super().cleanup()
         self._cleanup_worker()
