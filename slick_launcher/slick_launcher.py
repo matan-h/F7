@@ -58,7 +58,6 @@ class SlickLauncher(singleInstance):
         self.load_settings()    # Load from TOML after all registrations
         self.init_history()  
         self.initUI()
-        self.capture_initial_selection() # Get text immediately
         self.resetStatus() # Set initial status based on default plugin
 
         if self.settings.system.rememberLast and self.history:
@@ -822,6 +821,7 @@ class SlickLauncher(singleInstance):
         self.tray_icon.show()
 
     def show_window(self):
+        self.capture_initial_selection() # Get text immediately
         self.showNormal()
         self.activateWindow()
         self.raise_()
