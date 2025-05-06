@@ -6,13 +6,21 @@ class Color(str):
     pass
 class Section:
     """Represents a section of settings, allowing attribute access to values."""
-    def __init__(self, data):
+    def __init__(self, data:dict):
         self._data = data
 
     def __getattr__(self, name):
         if name in self._data:
             return self._data[name]
         raise AttributeError(f"No such setting: {name}")
+    
+    def __setattr__(self, name, value):
+        # always let us set _data (and any other private attrs) normally
+        if name.startswith('_'):
+            super().__setattr__(name, value)
+        else:
+            # store into the backing dict
+            self._data[name] = value
 
 class SectionRegistrar:
     """Helper class to register settings within a section."""

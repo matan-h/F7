@@ -8,6 +8,8 @@ from PyQt6.QtGui import QKeyEvent, QFont, QGuiApplication,QFontMetrics, QColor
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit,
                              QTextEdit, QVBoxLayout, QWidget, QLabel,
                              QFrame,QCompleter,QMessageBox)
+from PyQt6.QtWidgets import QSystemTrayIcon, QMenu
+from PyQt6.QtGui import QAction, QIcon
 
 
 from .settingsUI import SettingsDialog # Corrected import name
@@ -19,12 +21,15 @@ from .plugins import plugins
 # exit(0) # 258.18ms to this point
 from .utils import WORD_BOUNDARY_RE
 from .settings import Settings,Color # Assuming Color class exists
+
+from .singleInstance import singleInstance,send_socket_command
+
 from appdirs import user_config_dir
 from qt_material import apply_stylesheet
 
 
 # --- Constants ---
-class SlickLauncher(QMainWindow):
+class SlickLauncher(singleInstance):
     # Signal to notify plugins about cleanup
     aboutToQuit = pyqtSignal()
     # Signal emitted by main window when settings are applied (e.g., colors reloaded)
@@ -58,6 +63,15 @@ class SlickLauncher(QMainWindow):
 
         if self.settings.system.rememberLast and self.history:
             self.input_field.setText(self.history[-1])
+    
+    def process_socket_command(self,data:str):
+        match data:
+            case "show":
+                self.show_window()
+                return
+            case _:
+                print("unknown command from socket:",_)
+        
     
     @contextmanager
     def suppress_AC(self):
@@ -109,6 +123,8 @@ class SlickLauncher(QMainWindow):
 
         # [system] section
         system = self.settings.section("system")
+        system.add("startInTray", "Start minimized in system tray", False, bool)
+
         system.add("closeOnBlur", "Close launcher when it loses focus", True, bool)
         system.add("doComplete", "Enable autocompletion", True, bool)
         system.add("alwaysComplete", "show completions without waiting for '.'", False, bool)
@@ -611,7 +627,7 @@ class SlickLauncher(QMainWindow):
 
             elif key == Qt.Key.Key_Escape:
                   if not self.completer.popup().isVisible(): # Only quit if completer closed
-                     self.quit()
+                     self.close()
                      return True
 
         # Important: Pass events down for default QLineEdit/QCompleter handling
@@ -716,7 +732,7 @@ class SlickLauncher(QMainWindow):
                 clipboard.setText(str(result)) # Ensure it's a string
                 result_preview = str(result).replace('\n', ' ')[ :50] # Truncate for status
                 self.status_bar.setText(f"📋 Result copied: {result_preview}...")
-                QTimer.singleShot(100, self.quit) # Quit after copying
+                QTimer.singleShot(100, self.close) # Quit after copying
         else:
                 self.status_bar.setText("INTERNAL Error: Could not access clipboard.")
 
@@ -737,12 +753,10 @@ class SlickLauncher(QMainWindow):
         """Check if the window still lacks focus before quitting."""
         # Check isActiveWindow AND check if the application is not shutting down
         if not self.isActiveWindow() and QApplication.instance() is not None:
-             print("Focus lost, quitting.")
-             self.quit()
+             self.close()
 
     def focusOutEvent(self, event):
         # Fallback, though on_focus_changed is usually better
-        # self.quit() # Removed direct quit here, rely on on_focus_changed
         super().focusOutEvent(event)
 
 
@@ -759,14 +773,52 @@ class SlickLauncher(QMainWindow):
             except Exception as e:
                 print(f"Error cleaning up plugin {plugin.NAME}: {e}", file=sys.stderr)
 
+    def close(self):
+        if self.settings.system.startInTray:
+            return super().close()
+        self.quit()
 
     def quit(self):
         # Don't call cleanup_plugins here directly, it's handled by app.aboutToQuit signal
         print("Quit requested.")
         QApplication.quit()
+    
+    def setup_tray_icon(self):
 
-def main(show_settings=False):
-    app = QApplication(sys.argv)
+        self.tray_icon = QSystemTrayIcon(self)
+        self.tray_icon.setIcon(QIcon.fromTheme("system-run"))
+        
+        tray_menu = QMenu()
+        
+        show_action = QAction("Show", self)
+        show_action.triggered.connect(self.show_window)
+        tray_menu.addAction(show_action)
+        
+        settings_action = QAction("Settings", self)
+        settings_action.triggered.connect(self.open_settings)
+        tray_menu.addAction(settings_action)
+        
+        quit_action = QAction("Quit", self)
+        quit_action.triggered.connect(self.quit)
+        tray_menu.addAction(quit_action)
+        
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.show()
+
+    def show_window(self):
+        self.showNormal()
+        self.activateWindow()
+        self.raise_()
+        self.input_field.setFocus()
+
+
+def main(argv:list):
+    if "show" in argv:
+        if send_socket_command("show"):
+            sys.exit(0)
+
+
+    app = QApplication(argv)
     app.setQuitOnLastWindowClosed(True) # Ensure app exits cleanly
 
     # Set default font - consider making this configurable
@@ -776,17 +828,21 @@ def main(show_settings=False):
 
     try:
         launcher = SlickLauncher()
-        launcher.show()
-        # --- ADDED LINES FOR FOCUS on windows, as windows doesnt like just jumping windows---
-        # Ensure the window is brought to front and becomes active
-        launcher.showNormal() # Restore if minimized (optional, but good practice)
-        launcher.activateWindow() # Activate the window
-        launcher.raise_()       # Bring the window to the front
+        if ("-notray" in argv):
+            print("enter2")
+            launcher.settings.system.startInTray = False
 
-        # Set focus explicitly to the input field after showing
-        launcher.input_field.setFocus()
-        if (show_settings):
+        if("show" in argv or "settings" in argv) or not launcher.settings.system.startInTray:
+            launcher.show()
+            launcher.show_window()
+
+        if ("settings" in argv):
             launcher.open_settings()
+        
+        elif launcher.settings.system.startInTray:
+            print("enter")
+            launcher.setup_tray_icon()
+        
         sys.exit(app.exec())
     except Exception as e:
          print(f"Critical error during application startup: {e}", file=sys.stderr)
@@ -795,4 +851,4 @@ def main(show_settings=False):
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv)

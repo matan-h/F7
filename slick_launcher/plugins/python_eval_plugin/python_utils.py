@@ -4,11 +4,6 @@ from contextlib import _RedirectStream
 class redirect_stdin(_RedirectStream): # https://github.com/pyodide/pyodide/blob/main/docs/usage/faq.md
     _stream = "stdin"
 
-class dotdict(dict): # see https://stackoverflow.com/a/23689767
-    """dot.notation access to dictionary attributes"""
-    __getattr__ = dict.get
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
 
 # python specific
 class PyUtils:

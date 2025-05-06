@@ -7,8 +7,8 @@ import rlcompleter
 
 from PyQt6.QtWidgets import QTextEdit, QLabel
 from ..base_plugin import PluginInterface
-from .python_utils import dotdict,smart_eval,repr_as_json,PyUtils,auto_parse,redirect_stdin
-from ...utils import WORD_BOUNDARY_RE
+from .python_utils import smart_eval,repr_as_json,PyUtils,auto_parse,redirect_stdin
+from ...utils import dotdict,WORD_BOUNDARY_RE
 
 from .static_globals import static_globals
 

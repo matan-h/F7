@@ -6,21 +6,12 @@ from PyQt6.QtCore import QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QTextCursor
 from PyQt6.QtWidgets import QTextEdit, QLabel
 from .base_plugin import PluginInterface
-
+from ..utils import dotdict
 # default sysprompt
 SYSPROMPT ="""You are a string tool. You'll get input as:
 text:`<text>` request:`<operation>`
 Reply with exactly the transformed string—nothing else, no code fences or explanations."""
 # Lazy-load modules to reduce startup time
-def _get_ollama_module():
-    if not hasattr(_get_ollama_module, "_module"):
-        _get_ollama_module._module = importlib.import_module('ollama')
-    return _get_ollama_module._module
-
-def _get_llama_cpp_module():
-    if not hasattr(_get_llama_cpp_module, "_module"):
-        _get_llama_cpp_module._module = importlib.import_module('llama_cpp')
-    return _get_llama_cpp_module._module
 
 class AIStreamWorker(QThread):
     """Worker thread for handling AI streaming with Ollama or llama_cpp."""
@@ -45,7 +36,8 @@ class AIStreamWorker(QThread):
 
         if backend == "ollama":
             try:
-                ollama = _get_ollama_module()
+                import ollama
+
                 options = {
                     k: v for k, v in {
                         "temperature": self.settings.temperature,
@@ -93,9 +85,16 @@ class AIStreamWorker(QThread):
             if not os.path.exists(self.settings.llama_cpp_model):
                 self.error_occurred.emit(f"Model file not found: {self.settings.llama_cpp_model}")
                 return
+            
+            import llama_cpp
+            kw = dotdict()
+            kw.n_threads = self.settings.llama_cpp_n_threads or (os.cpu_count() or 4)
+            if self.settings.llama_cpp_use_GPU:
+                kw.n_gpu_layers = -1
             try:
-                llama_cpp = _get_llama_cpp_module()
-                llm = llama_cpp.Llama(model_path=self.settings.llama_cpp_model)
+                llm = llama_cpp.Llama(model_path=self.settings.llama_cpp_model,verbose=False,
+                                      **kw)
+
                 prompt = f"USER: `{self.msg}`\ntext:```\n{self.text}\n```"
                 if self.settings.system_prompt is not None:
                     prompt = f"{self.settings.system_prompt}\n{prompt}"
@@ -166,6 +165,9 @@ class AiOllamaPlugin(PluginInterface):
         ai_section.add("backend", "AI backend to use", "ollama", str, options=["ollama", "llama_cpp"])
         ai_section.add("ollama_model", "Model name for Ollama", "phi3", str)
         ai_section.add("llama_cpp_model", "Path to model file for llama_cpp", "", str)
+        ai_section.add("llama_cpp_n_threads", "Number of threads to use for generation (default: os.cpu_count) ", None, int)
+        ai_section.add("llama_cpp_use_GPU", "enable n_gpu_layers=-1 so llama.cpp would use the GPU ", False, bool)
+
         ai_section.add("system_prompt", "System prompt for the AI", SYSPROMPT, str)
         ai_section.add("max_tokens", "Maximum number of tokens to generate", 100, int)
         ai_section.add("temperature", "Sampling temperature", None, float)
