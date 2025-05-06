@@ -775,6 +775,18 @@ class SlickLauncher(singleInstance):
                 print(f"Error cleaning up plugin {plugin.NAME}: {e}", file=sys.stderr)
 
     def close(self):
+        # Dynamically clear or reset UI elements in the main layout
+        layout = self.main_widget.layout()
+        for i in range(layout.count()):
+            widget = layout.itemAt(i).widget()
+            if isinstance(widget, QLineEdit):
+                widget.clear()
+            elif isinstance(widget, QTextEdit):
+                widget.clear()
+                self.hide_preview()  # Ensure preview is hidden
+            elif isinstance(widget, QLabel):
+                self.resetStatus()  # Reset status bar
+
         if self.settings.system.startInTray:
             return super().close()
         self.quit()
