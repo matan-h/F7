@@ -153,7 +153,7 @@ def _get_selected_text_clipboard_hack():
             raise Exception("you are likely running shift from the terminal. to copy on windows/macOS it does ctrl+c. Unfortunately, its the same shortcut to quit in the terminal. ")
 
         # 3. Wait briefly for clipboard to update (crucial, might need tuning)
-        time.sleep(0.1)
+        time.sleep(0.3)
 
         # 4. Read the new clipboard content
         try:
@@ -186,8 +186,8 @@ def _get_selected_text_clipboard_hack():
     # If clipboard content didn't change from original *and* we read both successfully,
     # it likely means no text was selected or the copy failed silently.
     if original_clipboard is not None and selected_text is not None and selected_text == original_clipboard:
-         # print("Clipboard content unchanged after copy simulation. Assuming no text selected or copy failed.", file=sys.stderr)
-         return "" # Return empty string in this ambiguous case
+         print("Clipboard content unchanged after copy simulation. maybe copy failed.", file=sys.stderr)
+        #  return "" # Return empty string in this ambiguous case
 
     # Return the text read (which might be None if reading failed)
     # If selected_text is None here, it means an error occurred during the process

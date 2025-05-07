@@ -1,9 +1,12 @@
 # settings.py
 import os
 import tomli,tomli_w
-from appdirs import user_config_dir
 class Color(str):
     pass
+
+class HotKeyType(str):
+    pass
+
 class Section:
     """Represents a section of settings, allowing attribute access to values."""
     def __init__(self, data:dict):
@@ -46,6 +49,8 @@ class SectionRegistrar:
 
 class Settings:
     Color = Color
+    HotKeyType = HotKeyType
+    
     """Manages all settings, including registration and TOML loading."""
     def __init__(self):
         self._registry = {}  # Stores setting metadata

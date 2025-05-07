@@ -87,21 +87,9 @@ class SlickUIFactory:
         """
         colors = settings_instance.colors # Access the 'colors' section from settings
 
-        def get_hex(color_setting_value, default_hex="#ffffff") -> str:
+        def get_hex(color_setting_value, default_hex="#ffffff") -> str: # TODO: remove this function
             """Safely gets a hex string from a setting, defaulting if invalid."""
-            if isinstance(color_setting_value, Color): # settings.Color object
-                hex_str = str(color_setting_value) # Assuming Color object has __str__ returning hex
-            elif isinstance(color_setting_value, str):
-                hex_str = color_setting_value
-            else:
-                hex_str = default_hex
-
-            # Basic validation for hex string
-            # if not (isinstance(hex_str, str) and hex_str.startswith("#") and len(hex_str) in [7, 9]):
-            #     print(f"Warning: Invalid color format '{hex_str}' for setting. Using default '{default_hex}'.", file=sys.stderr)
-            #     return default_hex
-            return hex_str
-
+            return color_setting_value
         # Define QSS using f-string and pulling colors from settings
         # Fallback values are provided in case a setting is missing or malformed
         qcss = f"""

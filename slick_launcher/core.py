@@ -6,7 +6,7 @@ from typing import Optional
 from appdirs import user_config_dir
 
 # Local imports from your project structure
-from .settings import Settings, Color # Assuming Color is used or defined
+from .settings import HotKeyType, Settings, Color # Assuming Color is used or defined
 from .plugins import plugins as plugins_registry # plugins is a list of plugin classes from plugins/__init__.py
 from .plugins.base_plugin import PluginInterface # For type hinting
 from .clip import get_selected_text
@@ -71,6 +71,7 @@ class CoreLogic:
         system_section.add("rememberLast", "Remember the last command", False, bool)
         system_section.add("history", "Enable command history", True, bool)
         system_section.add("history_limit", "Max number of history items", 100, int)
+        system_section.add("hotkey","the keyboard shortcut to start the app from tray in windows/macos",'<ctrl>+<alt>+s',HotKeyType)
 
 
 

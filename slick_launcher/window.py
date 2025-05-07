@@ -4,17 +4,16 @@ import sys
 import traceback
 from contextlib import contextmanager
 
-from PyQt6.QtCore import QStringListModel, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QStringListModel, Qt, QTimer, pyqtSignal,QMetaObject, pyqtSlot
 from PyQt6.QtGui import QKeyEvent, QFontMetrics, QIcon, QAction, QGuiApplication
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget,
                              QSystemTrayIcon, QMenu, QLineEdit, QTextEdit, QLabel,
                              QCompleter)
 
-from slick_launcher.types import QInstance # Added missing imports
+from slick_launcher.hotkey import HotkeyListener
+from slick_launcher.types import QInstance
 
 
-
-# Local imports from your project structure
 from .api import API 
 
 from .core import CoreLogic
@@ -42,6 +41,7 @@ class SlickLauncherWindow(singleInstance): # Inherits from singleInstance
         super().__init__() # Call parent constructor (singleInstance)
         self.core = CoreLogic()
         self.api = API(self)
+        self.hotkey_listener = None
 
         # --- Initialization Steps ---
         # 1. Register settings definitions (before loading them)
@@ -360,7 +360,7 @@ class SlickLauncherWindow(singleInstance): # Inherits from singleInstance
         if self.completer: self.completer.popup().hide() # Hide popup after inserting
 
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj, event:QKeyEvent):
         """
         Filters events for the input field, primarily for handling key presses
         like Enter, Escape, Tab, Up/Down arrows for history and completion.
@@ -604,13 +604,28 @@ class SlickLauncherWindow(singleInstance): # Inherits from singleInstance
         self.aboutToQuitSignal.emit() # Notify internal components/plugins
         self.core.cleanup_plugins()   # Call core logic for plugin cleanup
         self.core.save_history()      # Ensure history is saved on exit
+        if self.hotkey_listener:
+            self.hotkey_listener.stop()
+        
         if hasattr(self, 'tray_icon') and self.tray_icon: # Clean up tray icon
             self.tray_icon.hide()
+    
+    def _handle_hotkey(self):
+        # Safely call the show_window slot in the main thread
+        QMetaObject.invokeMethod(self, "show_window_signal", Qt.ConnectionType.QueuedConnection)
+    
+    @pyqtSlot()
+    def show_window_signal(self):
+        self.show_window_from_tray_or_socket()
 
 
     # --- System Tray Icon Functionality ---
     def setup_tray_icon(self):
         """Sets up the system tray icon and its context menu."""
+        if not self.hotkey_listener and self.core.settings.system.hotkey:
+            self.hotkey_listener = HotkeyListener(self.core.settings.system.hotkey, self._handle_hotkey)
+            self.hotkey_listener.start()
+        
         if not QSystemTrayIcon.isSystemTrayAvailable():
             print("Warning: System tray not available on this system.", file=sys.stderr)
             self.tray_icon = None
@@ -645,7 +660,7 @@ class SlickLauncherWindow(singleInstance): # Inherits from singleInstance
         if reason == QSystemTrayIcon.ActivationReason.Trigger: # Typically a left-click
             self.show_window_from_tray_or_socket()
         # Can also handle QSystemTrayIcon.ActivationReason.Context for right-click if menu not enough
-
+    
 
     def show_window_from_tray_or_socket(self): # Unified method for showing
         """
