@@ -14,7 +14,7 @@ from .window import SlickLauncherWindow
 from .singleInstance import send_socket_command # For single instance check
 # from . import workaround as _ # If you have a workaround module
 
-def run_slick_launcher(argv: list):
+def main(argv: list):
     """
     Main entry point for the Slick Launcher application.
     Handles single instance checking, QApplication setup,
@@ -111,4 +111,4 @@ if __name__ == "__main__":
     # python main.py show
     # python main.py settings
     # python main.py -notray
-    run_slick_launcher(sys.argv)
+    main(sys.argv)

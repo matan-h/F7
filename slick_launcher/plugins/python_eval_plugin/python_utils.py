@@ -1,5 +1,6 @@
 import csv,io,base64,json,ast,sys,builtins,re
 from contextlib import _RedirectStream
+import types
 # general utils:
 class redirect_stdin(_RedirectStream): # https://github.com/pyodide/pyodide/blob/main/docs/usage/faq.md
     _stream = "stdin"
@@ -17,6 +18,7 @@ class PyUtils:
         return "\n".join(map(f, self.text.split("\n")))
     def grep(self,text):
         return list(filter(lambda x: re.search(text, x), self.text.split("\n")))
+    
     def sub(self,a, b, count=0):
         return re.sub(a, b, self.text, count=count)
 
@@ -95,8 +97,13 @@ def repr_as_json(obj,text):
         return obj
     if type(obj) is bytes:
         return repr(obj)
-    if type(obj) is list and len(obj) < 8 and  all(type(x) is str for x in obj):
+    
+    if type(obj) is map or type(obj) is filter or isinstance(obj, types.GeneratorType):
+        obj = list(obj)
+
+    if type(obj) is list and len(obj) < 50 and  all(type(x) is str for x in obj): # type: ignore
         return "\n".join(obj)
+    
     return repr(obj)
 
 

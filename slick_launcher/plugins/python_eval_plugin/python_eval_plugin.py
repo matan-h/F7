@@ -123,6 +123,7 @@ class PythonEvalPlugin(PluginInterface):
         utils = PyUtils(text)
         ctx.lines_map = utils.lines_map
         ctx.grep = utils.grep
+        ctx.sub = utils.sub
         ctx.lines_map = utils.lines_map
         # auto parse
         try:

@@ -182,7 +182,6 @@ class SlickLauncherWindow(singleInstance): # Inherits from singleInstance
         Reloads settings from memory (assuming SettingsDialog updated them) and applies stylesheet.
         """
         print("Window: Reloading visual settings...")
-        # self.core.load_settings_from_file() # Dialog should modify in-memory settings directly
         self.apply_current_stylesheet()
 
 
@@ -201,13 +200,10 @@ class SlickLauncherWindow(singleInstance): # Inherits from singleInstance
                 was_connected = False
 
         dialog = SettingsDialog(self.core.settings, self) # Pass current settings and parent
-        if hasattr(dialog, 'settingsApplied'): # Check if signal exists
-             dialog.settingsApplied.connect(self._reload_visual_settings)
-        else:
-            print("Warning: SettingsDialog does not have 'settingsApplied' signal. Auto-reload on apply won't work.", file=sys.stderr)
 
-        dialog.exec() # Show dialog modally
-
+        dialog.settingsApplied.connect(self._reload_visual_settings)
+        
+        dialog.exec()
         # Reconnect focus logic if it was disconnected
         if self.core.settings.system.closeOnBlur and was_connected and app_instance:
             try: # Ensure not to connect multiple times if logic changes
