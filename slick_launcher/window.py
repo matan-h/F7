@@ -591,7 +591,6 @@ class SlickLauncherWindow(singleInstance): # Inherits from singleInstance
 
     def quit_application(self):
         """Initiates the application quit sequence."""
-        print("Window: Quit application requested.")
         # Cleanup is handled by _handle_application_quit via app.aboutToQuit signal
         QApplication.instance().quit()
 
@@ -601,7 +600,6 @@ class SlickLauncherWindow(singleInstance): # Inherits from singleInstance
         Called when QApplication.instance().aboutToQuit is emitted.
         Ensures plugins are cleaned up and history is saved.
         """
-        print("Window: Application is about to quit. Performing cleanup...")
         self.aboutToQuitSignal.emit() # Notify internal components/plugins
         self.core.cleanup_plugins()   # Call core logic for plugin cleanup
         self.core.save_history()      # Ensure history is saved on exit

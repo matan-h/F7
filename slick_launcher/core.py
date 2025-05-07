@@ -64,7 +64,7 @@ class CoreLogic:
 
         # [system] section
         system_section = self.settings.section("system") # Use a different variable name
-        system_section.add("startInTray", "Start minimized in system tray", False, bool)
+        system_section.add("startInTray", "Start minimized in system tray", True, bool)
         system_section.add("closeOnBlur", "Close launcher when it loses focus", True, bool)
         system_section.add("doComplete", "Enable autocompletion", True, bool)
         system_section.add("alwaysComplete", "Show completions without waiting for '.'", False, bool)
@@ -88,6 +88,7 @@ class CoreLogic:
             api_instance: The API instance for plugins to use.
             app_settings: The main application settings object.
         """
+        # TODO: write a list of each plugin and its startup speed.
         loaded_plugins_temp = []
         for plugin_class in plugins_registry:
             try:
@@ -99,7 +100,6 @@ class CoreLogic:
                     plugin_instance.register_settings(app_settings) # Pass the main settings manager
                 
                 loaded_plugins_temp.append(plugin_instance)
-                print(f"Core: Successfully initialized plugin: {plugin_instance.NAME}")
             except Exception as e:
                 print(f"Core: Failed to load or initialize plugin {getattr(plugin_class, 'NAME', plugin_class.__name__)}: {e}", file=sys.stderr)
                 traceback.print_exc()
@@ -209,7 +209,6 @@ class CoreLogic:
         return self.default_plugin # Fallback to default if no specific match
 
     def cleanup_plugins(self):
-        print("Core: Cleaning up plugins...")
         for plugin in self.plugins:
             try:
                 if hasattr(plugin, 'cleanup') and callable(plugin.cleanup):
