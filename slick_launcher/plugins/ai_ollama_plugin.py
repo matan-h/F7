@@ -1,6 +1,7 @@
 from __future__ import annotations
 import re
 import os
+import traceback
 from typing import Optional
 from PyQt6.QtCore import QTimer, pyqtSignal
 
@@ -45,7 +46,7 @@ class AIStreamWorker(Thread):
                     model=self.settings.ollama_model,
                     messages=messages,
                     stream=True,
-                    **self._ollama_opts(),
+                    options= self._ollama_opts(),
                 )
                 for chunk in response:
                     if not self._running:
@@ -80,7 +81,7 @@ class AIStreamWorker(Thread):
             if self._running:
                 self.finished_signal.emit(buffer)
         except Exception as e:
-            self.error_occurred.emit(str(e))
+            self.error_occurred.emit(traceback.format_exc()+ str(e))
 
     def stop(self):
         self._running = False
@@ -219,7 +220,7 @@ class AiOllamaPlugin(PluginInterface):
             self.api.close_launcher(copy_and_close_text=result)
 
     def _on_error(self, msg: str):
-        print("error:",msg)
+        print("AI error:",msg)
         self.api.update_preview_content(msg)
         self.api.set_status(f"❌ Error: {msg}")
 

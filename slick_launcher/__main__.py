@@ -10,11 +10,12 @@ from PyQt6.QtWidgets import QApplication, QMessageBox
 from PyQt6.QtGui import QFont
 
 # Local imports from your project structure
+from . import workaround 
 from .window import SlickLauncherWindow
 from .singleInstance import send_socket_command # For single instance check
 # from . import workaround as _ # If you have a workaround module
 
-def main(argv: list):
+def cli(argv: list):
     """
     Main entry point for the Slick Launcher application.
     Handles single instance checking, QApplication setup,
@@ -102,8 +103,7 @@ def main(argv: list):
                                  f"A critical error occurred during startup:\n\n{e}\n\n"
                                  "Please check the console output for more details.")
         sys.exit(1) # Exit with an error code
-
-if __name__ == "__main__":
+def main():
     # To run: python -m your_package_name.main (if part of a package)
     # Or: python main.py (if running directly from the directory containing these files)
     #
@@ -111,4 +111,7 @@ if __name__ == "__main__":
     # python main.py show
     # python main.py settings
     # python main.py -notray
-    main(sys.argv)
+    cli(sys.argv)
+
+if __name__ == "__main__":
+    main()

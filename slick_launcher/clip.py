@@ -165,9 +165,6 @@ def _get_selected_text_clipboard_hack():
     except pyautogui.PyAutoGUIException as e:
          print(f"Error during pyautogui operation: {e}", file=sys.stderr)
          selected_text = None # Indicate failure
-    except Exception as e:
-        print(f"An unexpected error occurred during clipboard hack: {e}", file=sys.stderr)
-        selected_text = None # Indicate failure
     finally:
         # 5. Restore original clipboard content *if* we read it successfully
         #    Only restore if the content actually changed, or if reading failed after copy
@@ -198,7 +195,6 @@ def _get_selected_text_clipboard_hack():
 
 
 # --- Public API ---
-
 def get_selected_text(allow_clipboard_hack=True):
     """
     Attempts to get the currently selected text in a cross-platform manner.

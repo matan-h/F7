@@ -1,4 +1,5 @@
 # slick_window.py
+import os
 import sys
 import traceback
 from contextlib import contextmanager
@@ -614,13 +615,10 @@ class SlickLauncherWindow(singleInstance): # Inherits from singleInstance
             print("Warning: System tray not available on this system.", file=sys.stderr)
             self.tray_icon = None
             return
-
-        # Attempt to use a themed icon, with a fallback (ensure 'slick_icon.png' is available)
-        icon = QIcon.fromTheme("system-run", QIcon("slick_icon.png")) # Provide a fallback
+        icon_path = os.path.join(os.path.dirname(__file__),"assets","icon.png")
+        icon = QIcon(icon_path)
         if icon.isNull(): # If themed icon not found and fallback also fails
             print("Warning: Could not load tray icon.", file=sys.stderr)
-            # You might want to use a default Qt icon or no icon if all fails
-            # For now, proceed, it might show a blank space or default system icon.
 
         self.tray_icon = QSystemTrayIcon(icon, self)
         self.tray_icon.setToolTip("Slick Launcher")
