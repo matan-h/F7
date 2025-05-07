@@ -1,112 +1,139 @@
-# plugins/base_plugin.py
+# base_plugin.py
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Optional, List
 from PyQt6.QtCore import QThread
-from PyQt6.QtWidgets import QTextEdit, QLabel
+
+# Assuming types.py defines pyqtSignal, if not, import from QtCore
+# from PyQt6.QtCore import pyqtSignal 
+
+if TYPE_CHECKING:
+    from ..api import API 
+    from ..settings import Settings
+    # If your project has a common types.py for pyqtSignal, use this:
+    # from ..types import pyqtSignal 
+    # Otherwise, for standard Qt, you'd import pyqtSignal from QtCore in worker threads.
+
+class Thread(QThread): 
+    """
+    Base class for worker threads used by plugins.
+    Ensures a stop method is declared.
+    """
+    @abstractmethod
+    def stop(self):
+        """Signals the thread to stop its operation."""
+        raise NotImplementedError("Subclasses of Thread must implement stop()")
 
 class PluginInterface(ABC):
     """
     Abstract Base Class for Slick Launcher plugins.
-
-    Defines the interface that all plugins must implement.
+    Plugins interact with the launcher via the provided API instance.
     """
 
-    # --- Configuration ---
-    # Set these in your plugin implementation
+    NAME: str = "Base Plugin"
+    PREFIX: Optional[str] = None
+    SUFFIX: Optional[str] = None
+    IS_DEFAULT: bool = False
+    PRIORITY: int = 99
+    HAS_AUTOCOMPLETE: bool = False
 
-    NAME = "Base Plugin" # Human-readable name
-    PREFIX = None        # String prefix to trigger this plugin (e.g., "!")
-    SUFFIX = None        # String suffix to trigger this plugin
-    IS_DEFAULT = False   # True if this plugin handles input without matching prefix/suffix
-    PRIORITY = 99        # Lower number means higher priority for matching
-    
-    HAS_AUTOCOMPLETE = False # Set to True in plugins that provide completion
-
-    # --- Methods ---
-
-    @abstractmethod
-    def __init__(self, launcher_instance):
+    def __init__(self, api_instance: 'API', settings: 'Settings'):
         """
         Initialize the plugin.
+
         Args:
-            launcher_instance: Reference to the main SlickLauncher instance.
-                               Allows access to UI elements or core methods if needed,
-                               but use sparingly to maintain decoupling.
+            api_instance: An instance of the API class for interacting with the launcher.
+            settings: The application settings object.
         """
-        self.launcher = launcher_instance
-        self.active_workers = []  # Track active background workers
+        self.api = api_instance
+        self.settings = settings # Store settings instance as requested
+        self.active_workers: List[Thread] = []
+
 
     @abstractmethod
     def get_status_message(self) -> str:
         """
         Return a short status message to display when this plugin is potentially active.
+        This message is used by `api.reset_status()` or can be part of `api.set_status()`.
         """
         pass
 
     @abstractmethod
-    def update_preview(self, command: str, selected_text: str, preview_widget: QTextEdit, status_widget: QLabel,manual:bool) -> None:
+    def update_preview(self, command: str, selected_text: str, manual: bool) -> None:
         """
-        Update the preview widget based on the current command and selected text.
-        This method handles how the preview is displayed (e.g., static text, streaming).
+        Update the preview based on the current command and selected text.
+        Plugins should use `self.api.update_preview_content()` and `self.api.set_status()`.
 
         Args:
-            command: The current text in the input field (potentially including prefix/suffix).
-            selected_text: The text currently selected in the system.
-            preview_widget: The QTextEdit widget used for displaying the preview.
-            status_widget: The QLabel widget for status updates.
-            manual: true if the preview was triggered by ctrl+Enter.
+            command: The current text in the input field (obtained via `self.api.get_input_text()`).
+            selected_text: The text currently selected in the system (obtained via `self.api.get_selected_os_text()`).
+            manual: True if the preview was triggered by a manual action (e.g., Ctrl+Enter).
         """
         pass
 
     @abstractmethod
-    def execute(self, command: str, selected_text: str) -> str | None:
+    def execute(self, command: str, selected_text: str) -> Optional[str]:
         """
         Execute the main action of the plugin.
 
         Args:
-            command: The final command text (potentially stripped of prefix/suffix).
+            command: The final command text (stripped of prefix/suffix by the core).
             selected_text: The text currently selected in the system.
 
         Returns:
-            A string containing the result to be copied to the clipboard,
-            or None if the execution is asynchronous or doesn't produce clipboard output.
-            The launcher will handle copying the returned string and quitting.
-            If None is returned, the plugin is responsible for any further actions
-            (like async handling and quitting via self.launcher.quit()).
+            A string containing the result to be copied to the clipboard.
+            If a string is returned, `self.api.close_launcher(result)` will be called.
+            If None is returned, the plugin is responsible for any further actions,
+            including calling `self.api.close_launcher()` or `self.api.quit_application()`
+            if needed, or updating status/preview for errors or async operations.
         """
         pass
+
     @abstractmethod
-    def register_settings(self, settings):
-        """Register plugin-specific settings.
-        
+    def register_settings(self, settings_manager: 'Settings') -> None:
+        """
+        Register plugin-specific settings with the application's settings manager.
+        The `settings_manager` is the main application's settings object (self.settings).
+        This method is called by CoreLogic during plugin loading.
+
+        Example:
+            # In your plugin's register_settings:
+            # plugin_section = settings_manager.section(f"plugin_{self.NAME.lower().replace(' ', '_')}")
+            # plugin_section.add('my_option', 'Description of my option', 'default_val', str)
         """
         pass
-    # --- Optional Methods ---
-    # @abstractmethod
+
     def update_completions(self, command: str, cursor_pos: int) -> None:
         """
-        Optional: Update autocomplete suggestions based on the current command and cursor position.
-        The plugin should interact with the launcher's completer model if it implements this.
+        Optional: Update autocomplete suggestions.
+        Plugins should use:
+        - `model = self.api.get_completion_model()`
+        - `completer = self.api.get_completer()`
+        - `model.setStringList([...])`
+        - `completer.setCompletionPrefix("...")`
+        - `self.api.show_completion_popup()` or `self.api.hide_completion_popup()`
 
         Args:
             command: The full text currently in the input field.
             cursor_pos: The current position of the text cursor.
         """
-        pass 
-
-
+        # Default implementation does nothing.
+        # Plugins with HAS_AUTOCOMPLETE = True should override this.
+        pass
 
     def cleanup(self) -> None:
         """Optional: Clean up resources, including stopping any active workers."""
-        for worker in self.active_workers[:]:
-            if isinstance(worker, QThread) and worker.isRunning():
-                worker.stop()  # Ensure worker has a stop() method
-                worker.quit()
-                worker.wait(1000)
-                if worker.isRunning():
-                    worker.terminate()
-                    worker.wait()
-            self.active_workers.remove(worker)
-        instance_cleanup = getattr(super(),"cleanup",None)
-
-        if instance_cleanup:
-            instance_cleanup()
+        for worker in self.active_workers[:]: 
+            if isinstance(worker, Thread) and worker.isRunning():
+                try:
+                    worker.stop()
+                    worker.quit()
+                    if not worker.wait(1000): 
+                        print(f"Plugin {self.NAME}: Worker thread did not stop gracefully, terminating.")
+                        worker.terminate() 
+                        worker.wait()      
+                except Exception as e:
+                    print(f"Plugin {self.NAME}: Error stopping worker thread: {e}")
+            if worker in self.active_workers: 
+                self.active_workers.remove(worker)
+        
+        # print(f"Plugin {self.NAME}: Cleanup complete. Active workers left: {len(self.active_workers)}")

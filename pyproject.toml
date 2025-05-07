@@ -6,7 +6,7 @@ authors = [
     {name = "matan h",email = "matan.honig2@gmail.com"}
 ]
 readme = "README.md"
-requires-python = "^3.9"
+requires-python = ">=3.8"
 dependencies = [
     "pyqt6 (>=6.9.0,<7.0.0)",
     "pyperclip (>=1.9.0,<2.0.0)",
