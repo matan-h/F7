@@ -95,7 +95,11 @@ class AIStreamWorker(Thread):
             'frequency_penalty': self.settings.frequency_penalty,
             'presence_penalty': self.settings.presence_penalty,
             'stop': self.settings.stop_sequences,
+            'n_threads':self.settings.llama_cpp_n_threads or (os.cpu_count() or 4),
+            'n_gpu_layers': -1 if self.settings.llama_cpp_use_GPU else None
+            
         }
+
         # include n_threads and GPU args if provided
         # llama_cpp handles these in constructor, so only core options here
         return {k: v for k, v in opts.items() if v is not None}
@@ -122,7 +126,7 @@ class AiOllamaPlugin(PluginInterface):
         sec.add('backend', 'AI backend', 'ollama', str, options=['ollama', 'llama_cpp'])
         sec.add('ollama_model', 'Ollama model', 'phi3', str)
         sec.add('llama_cpp_model', 'Llama.cpp model path', '', str)
-        sec.add('llama_cpp_n_threads', 'Threads', None, int)
+        sec.add('llama_cpp_n_threads', 'Number of threads to use for generation (default: os.cpu_count)', None, int)
         sec.add('llama_cpp_use_GPU', 'Use GPU', False, bool)
         sec.add('system_prompt', 'System prompt', SYSPROMPT, str)
         sec.add('max_tokens', 'Max tokens', 100, int)

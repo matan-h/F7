@@ -1,12 +1,11 @@
-# slick_ui.py
+# ui.py
 import sys
 from PyQt6.QtCore import Qt, QStringListModel
-# QColor is used by generate_stylesheet, settings.Color should be used
+
 from PyQt6.QtWidgets import (QLineEdit, QTextEdit, QVBoxLayout, QWidget,
                              QLabel, QFrame, QCompleter)
 
-# Local import from your project structure
-from .settings import Color # For type hinting and default values in stylesheet
+from .settings import Color
 
 class SlickUIFactory:
     """
@@ -98,59 +97,61 @@ class SlickUIFactory:
                 hex_str = default_hex
 
             # Basic validation for hex string
-            if not (isinstance(hex_str, str) and hex_str.startswith("#") and len(hex_str) in [7, 9]):
-                print(f"Warning: Invalid color format '{hex_str}' for setting. Using default '{default_hex}'.", file=sys.stderr)
-                return default_hex
+            # if not (isinstance(hex_str, str) and hex_str.startswith("#") and len(hex_str) in [7, 9]):
+            #     print(f"Warning: Invalid color format '{hex_str}' for setting. Using default '{default_hex}'.", file=sys.stderr)
+            #     return default_hex
             return hex_str
 
         # Define QSS using f-string and pulling colors from settings
         # Fallback values are provided in case a setting is missing or malformed
         qcss = f"""
-            #MainWidget {{
-                background: {get_hex(colors.main, '#282c34')};
-                border-radius: 6px;
-                border: 1px solid rgba(255, 255, 255, 0.12);
-            }}
-            #InputField {{
-                font-size: 16px;
-                padding: 8px 12px;
-                background: {get_hex(colors.input, '#1e222a')};
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 4px;
-                color: #abb2bf; /* Consider making text colors configurable too */
-                margin-bottom: 4px;
-            }}
-            #PreviewOutput {{
-                font-family: 'Fira Code', 'Consolas', monospace; /* Monospaced font for previews */
-                font-size: 13px;
-                background: {get_hex(colors.preview, '#1e222a')};
-                color: #abb2bf;
-                border: 1px solid rgba(255, 255, 255, 0.06);
-                border-radius: 4px;
-                padding: 4px 8px;
-            }}
-            #StatusBar {{
-                color: #5c6370;
-                font-size: 11px;
-                padding: 2px 4px;
-                margin-top: 4px;
-            }}
-            #CompletionPopup {{ /* Style the completer's popup window */
-                background: {get_hex(colors.completion_popup, '#32363e')};
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 4px;
-                color: #abb2bf; /* Text color for completion items */
-                font-size: 13px;
-                padding: 2px; /* Padding around the list of items */
-                margin: 0px; /* Important for positioning relative to input field */
-            }}
-            #CompletionPopup QAbstractItemView::item {{ /* Style individual items in the popup */
-                 padding: 4px 8px; /* Padding within each item */
-                 border-radius: 3px; /* Slightly rounded corners for items */
-            }}
-            #CompletionPopup QAbstractItemView::item:selected {{ /* Style for the selected item */
-                background-color: {get_hex(colors.completion_selected, '#4682b4')};
-                color: #ffffff; /* White text for selected item for contrast */
-            }}
-        """
+        #MainWidget {{
+            background: {get_hex(colors.main_widget_bg, '#282c34')};
+            border: 1px solid {get_hex(colors.main_widget_border, '#ffffff1a')};
+            border-radius: 6px;
+        }}
+        #InputField {{
+            background: {get_hex(colors.input_bg, '#1e222a')};
+            border: 1px solid {get_hex(colors.input_border, '#ffffff14')};
+            border-radius: 4px;
+            color: {get_hex(colors.input_text, '#abb2bf')};
+            padding: 8px 12px;
+            font-size: 16px;
+        }}
+        #InputField:focus {{
+            border: 1px solid {get_hex(colors.input_focus_border, '#4682b4')};
+        }}
+        #PreviewOutput {{
+            background: {get_hex(colors.preview_bg, '#1e222a')};
+            border: 1px solid {get_hex(colors.preview_border, '#ffffff0d')};
+            border-radius: 4px;
+            color: {get_hex(colors.preview_text, '#abb2bf')};
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 13px;
+            padding: 4px 8px;
+        }}
+        #StatusBar {{
+            color: {get_hex(colors.status_bar_text, '#5c6370')};
+            font-size: 11px;
+            padding: 2px 4px;
+        }}
+        #CompletionPopup {{
+            background: {get_hex(colors.completion_popup_bg, '#32363e')};
+            border: 1px solid {get_hex(colors.completion_popup_border, '#ffffff26')};
+            border-radius: 4px;
+            color: {get_hex(colors.completion_popup_text, '#abb2bf')};
+            font-size: 13px;
+            padding: 2px;
+        }}
+        #CompletionPopup::item {{
+            padding: 4px 8px;
+            border-radius: 3px;
+        }}
+        #CompletionPopup::item:selected {{
+            background-color: {get_hex(colors.completion_item_selected_bg, '#4682b4')};
+            color: {get_hex(colors.completion_item_selected_text, '#ffffff')};
+        }}
+    """
+
+
         return qcss

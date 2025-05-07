@@ -34,16 +34,32 @@ class CoreLogic:
 
 
     def register_main_settings(self):
+        # In Qt’s QSS you can use 8‑digit hex in the #AARRGGBB format, where the first two hex digits are the alpha channel.
         # [colors] section
         colors_section = self.settings.section("colors") # Use a different variable name
-        colors_section.add("main", "Main background color", "#282c34", Color)
-        colors_section.add("input", "Input field background color", "#1e222a", Color)
-        colors_section.add("preview", "Preview background color", "#1e222a", Color)
-        colors_section.add("completion_popup", "Completion popup background color", "#32363e", Color)
-        colors_section.add("completion_selected", "Selected completion item background color", "#4682b4", Color)
-        colors_section.add("text_main", "Main text color", "#abb2bf", Color)
-        colors_section.add("text_preview", "Preview text color", "#abb2bf", Color)
-        colors_section.add("text_status", "Status bar text color", "#98c379", Color)
+        colors_section.add("main_widget_bg", "Main widget background color", "#282c34", Color)
+        colors_section.add("main_widget_border", "Main widget border color", "#1f1f1f", Color)
+
+        # Input field settings
+        colors_section.add("input_bg", "Input field background color", "#1e222a", Color)
+        colors_section.add("input_border", "Input field border color", "#14ffffff", Color)
+        colors_section.add("input_text", "Input field text color", "#abb2bf", Color)
+        colors_section.add("input_focus_border", "Input field focus border color", "#4682b4", Color)
+
+        # Preview settings
+        colors_section.add("preview_bg", "Preview background color", "#1e222a", Color)
+        colors_section.add("preview_border", "Preview border color", "#0fffffff", Color)
+        colors_section.add("preview_text", "Preview text color", "#abb2bf", Color)
+
+        # Completion popup settings
+        colors_section.add("completion_popup_bg", "Completion popup background color", "#32363e", Color)
+        colors_section.add("completion_popup_border", "Completion popup border color", "#25ffffff", Color)
+        colors_section.add("completion_popup_text", "Completion popup text color", "#abb2bf", Color)
+        colors_section.add("completion_item_selected_bg", "Selected completion item background color", "#4682b4", Color)
+        colors_section.add("completion_item_selected_text", "Selected completion item text color", "#ffffff", Color)
+
+        # Status bar settings
+        colors_section.add("status_bar_text", "Status bar text color", "#5c6370", Color)
 
 
         # [system] section
@@ -55,6 +71,8 @@ class CoreLogic:
         system_section.add("rememberLast", "Remember the last command", False, bool)
         system_section.add("history", "Enable command history", True, bool)
         system_section.add("history_limit", "Max number of history items", 100, int)
+
+
 
 
     def load_settings_from_file(self):
