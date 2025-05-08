@@ -1,11 +1,19 @@
 # ui.py
 import sys
-from PyQt6.QtCore import Qt, QStringListModel
 
-from PyQt6.QtWidgets import (QLineEdit, QTextEdit, QVBoxLayout, QWidget,
-                             QLabel, QFrame, QCompleter)
+from PyQt6.QtCore import QStringListModel, Qt
+from PyQt6.QtWidgets import (
+    QCompleter,
+    QFrame,
+    QLabel,
+    QLineEdit,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from .settings import Color
+
 
 class SlickUIFactory:
     """
@@ -26,42 +34,58 @@ class SlickUIFactory:
                   (e.g., "main_widget", "input_field", "completer").
         """
         main_widget = QWidget(parent=parent_widget)
-        main_widget.setObjectName("MainWidget") # For styling via QSS
+        main_widget.setObjectName("MainWidget")  # For styling via QSS
 
-        layout = QVBoxLayout(main_widget) # Set layout directly on main_widget
-        layout.setContentsMargins(8, 8, 8, 8) # Consistent padding
-        layout.setSpacing(4) # Spacing between widgets
+        layout = QVBoxLayout(main_widget)  # Set layout directly on main_widget
+        layout.setContentsMargins(8, 8, 8, 8)  # Consistent padding
+        layout.setSpacing(4)  # Spacing between widgets
 
         # Input field for commands
         input_field = QLineEdit(parent=main_widget)
         input_field.setPlaceholderText("Enter text or command...")
-        input_field.setObjectName("InputField") # For styling
+        input_field.setObjectName("InputField")  # For styling
         layout.addWidget(input_field)
 
         # Autocompleter setup
-        completion_model = QStringListModel(parent=input_field) # Parent to input_field for lifetime
-        completer = QCompleter(completion_model, parent=input_field) # Parent to input_field
-        completer.setWidget(input_field) # Associate completer with the input field
+        completion_model = QStringListModel(
+            parent=input_field
+        )  # Parent to input_field for lifetime
+        completer = QCompleter(
+            completion_model, parent=input_field
+        )  # Parent to input_field
+        completer.setWidget(input_field)  # Associate completer with the input field
         completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseSensitive) # Python is case-sensitive
-        completer.setFilterMode(Qt.MatchFlag.MatchStartsWith) # Standard completion filter
-        completer.popup().setObjectName("CompletionPopup") # For styling the popup
+        completer.setCaseSensitivity(
+            Qt.CaseSensitivity.CaseSensitive
+        )  # Python is case-sensitive
+        completer.setFilterMode(
+            Qt.MatchFlag.MatchStartsWith
+        )  # Standard completion filter
+        completer.popup().setObjectName("CompletionPopup")  # For styling the popup
 
         # Preview output area
         preview_output = QTextEdit(parent=main_widget)
-        preview_output.setObjectName("PreviewOutput") # For styling
+        preview_output.setObjectName("PreviewOutput")  # For styling
         preview_output.setReadOnly(True)
         preview_output.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        preview_output.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        preview_output.setFrameStyle(QFrame.Shape.NoFrame) # No border for seamless look
-        preview_output.setMaximumHeight(200) # Default max height, can be adjusted dynamically
-        preview_output.setFocusPolicy(Qt.FocusPolicy.NoFocus) # Prevent tabbing into read-only preview
-        preview_output.hide() # Initially hidden
+        preview_output.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        preview_output.setFrameStyle(
+            QFrame.Shape.NoFrame
+        )  # No border for seamless look
+        preview_output.setMaximumHeight(
+            200
+        )  # Default max height, can be adjusted dynamically
+        preview_output.setFocusPolicy(
+            Qt.FocusPolicy.NoFocus
+        )  # Prevent tabbing into read-only preview
+        preview_output.hide()  # Initially hidden
         layout.addWidget(preview_output)
 
         # Status bar for messages
         status_bar = QLabel(parent=main_widget)
-        status_bar.setObjectName("StatusBar") # For styling
+        status_bar.setObjectName("StatusBar")  # For styling
         layout.addWidget(status_bar)
 
         return {
@@ -71,7 +95,7 @@ class SlickUIFactory:
             "status_bar": status_bar,
             "completer": completer,
             "completion_model": completion_model,
-            "layout": layout
+            "layout": layout,
         }
 
     @staticmethod
@@ -85,11 +109,14 @@ class SlickUIFactory:
         Returns:
             str: A QSS string for styling the application.
         """
-        colors = settings_instance.colors # Access the 'colors' section from settings
+        colors = settings_instance.colors  # Access the 'colors' section from settings
 
-        def get_hex(color_setting_value, default_hex="#ffffff") -> str: # TODO: remove this function
+        def get_hex(
+            color_setting_value, default_hex="#ffffff"
+        ) -> str:  # TODO: remove this function
             """Safely gets a hex string from a setting, defaulting if invalid."""
             return color_setting_value
+
         # Define QSS using f-string and pulling colors from settings
         # Fallback values are provided in case a setting is missing or malformed
         qcss = f"""
@@ -140,6 +167,5 @@ class SlickUIFactory:
             color: {get_hex(colors.completion_item_selected_text, '#ffffff')};
         }}
     """
-
 
         return qcss

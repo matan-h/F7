@@ -1,27 +1,32 @@
 # base_plugin.py
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional, List
+from typing import TYPE_CHECKING, List, Optional
+
 from PyQt6.QtCore import QThread
 
 # Assuming types.py defines pyqtSignal, if not, import from QtCore
-# from PyQt6.QtCore import pyqtSignal 
+# from PyQt6.QtCore import pyqtSignal
 
 if TYPE_CHECKING:
-    from ..api import API 
+    from ..api import API
     from ..settings import Settings
+
     # If your project has a common types.py for pyqtSignal, use this:
-    # from ..types import pyqtSignal 
+    # from ..types import pyqtSignal
     # Otherwise, for standard Qt, you'd import pyqtSignal from QtCore in worker threads.
 
-class Thread(QThread): 
+
+class Thread(QThread):
     """
     Base class for worker threads used by plugins.
     Ensures a stop method is declared.
     """
+
     @abstractmethod
     def stop(self):
         """Signals the thread to stop its operation."""
         raise NotImplementedError("Subclasses of Thread must implement stop()")
+
 
 class PluginInterface(ABC):
     """
@@ -36,7 +41,7 @@ class PluginInterface(ABC):
     PRIORITY: int = 99
     HAS_AUTOCOMPLETE: bool = False
 
-    def __init__(self, api_instance: 'API', settings: 'Settings'):
+    def __init__(self, api_instance: "API", settings: "Settings"):
         """
         Initialize the plugin.
 
@@ -45,9 +50,8 @@ class PluginInterface(ABC):
             settings: The application settings object.
         """
         self.api = api_instance
-        self.settings = settings # Store settings instance as requested
+        self.settings = settings  # Store settings instance as requested
         self.active_workers: List[Thread] = []
-
 
     @abstractmethod
     def get_status_message(self) -> str:
@@ -89,7 +93,7 @@ class PluginInterface(ABC):
         pass
 
     @abstractmethod
-    def register_settings(self, settings_manager: 'Settings') -> None:
+    def register_settings(self, settings_manager: "Settings") -> None:
         """
         Register plugin-specific settings with the application's settings manager.
         The `settings_manager` is the main application's settings object (self.settings).
@@ -122,18 +126,20 @@ class PluginInterface(ABC):
 
     def cleanup(self) -> None:
         """Optional: Clean up resources, including stopping any active workers."""
-        for worker in self.active_workers[:]: 
+        for worker in self.active_workers[:]:
             if isinstance(worker, Thread) and worker.isRunning():
                 try:
                     worker.stop()
                     worker.quit()
-                    if not worker.wait(1000): 
-                        print(f"Plugin {self.NAME}: Worker thread did not stop gracefully, terminating.")
-                        worker.terminate() 
-                        worker.wait()      
+                    if not worker.wait(1000):
+                        print(
+                            f"Plugin {self.NAME}: Worker thread did not stop gracefully, terminating."
+                        )
+                        worker.terminate()
+                        worker.wait()
                 except Exception as e:
                     print(f"Plugin {self.NAME}: Error stopping worker thread: {e}")
-            if worker in self.active_workers: 
+            if worker in self.active_workers:
                 self.active_workers.remove(worker)
-        
+
         # print(f"Plugin {self.NAME}: Cleanup complete. Active workers left: {len(self.active_workers)}")

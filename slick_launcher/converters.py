@@ -9,14 +9,18 @@ class KeySequenceConverter:
         Qt.KeyboardModifier.ControlModifier: ("<ctrl>", "Ctrl"),
         Qt.KeyboardModifier.ShiftModifier: ("<shift>", "Shift"),
         Qt.KeyboardModifier.AltModifier: ("<alt>", "Alt"),
-        Qt.KeyboardModifier.MetaModifier: ("<meta>", "Meta")
+        Qt.KeyboardModifier.MetaModifier: ("<meta>", "Meta"),
     }
 
     @staticmethod
     def _get_mods(modifiers: Qt.KeyboardModifier, native: bool = False) -> list[str]:
         """Returns modifier names (custom or native)."""
         idx = 1 if native else 0
-        return [names[idx] for mod, names in KeySequenceConverter._MOD_MAP.items() if modifiers & mod]
+        return [
+            names[idx]
+            for mod, names in KeySequenceConverter._MOD_MAP.items()
+            if modifiers & mod
+        ]
 
     @staticmethod
     def _format_key(key_str: str) -> str:
@@ -27,13 +31,16 @@ class KeySequenceConverter:
         else:
             return f"<{key_str}>"
 
-
     @staticmethod
     def _parse_key(key_str: str) -> str:
         """Parses a custom key string to native format."""
         if key_str.startswith("<") and key_str.endswith(">"):
             key_str = key_str[1:-1]
-        return key_str.upper() if (len(key_str) == 1 and key_str.isalpha()) or key_str.startswith("f") else key_str.capitalize()
+        return (
+            key_str.upper()
+            if (len(key_str) == 1 and key_str.isalpha()) or key_str.startswith("f")
+            else key_str.capitalize()
+        )
 
     @classmethod
     def to_custom_str(cls, qks: QKeySequence) -> str | None:
@@ -46,7 +53,6 @@ class KeySequenceConverter:
         key_val = combo.key()
 
         mod_parts = cls._get_mods(mods)
-
 
         temp_seq = QKeySequence(key_val)
 
@@ -74,7 +80,13 @@ class KeySequenceConverter:
                     mods |= mod
 
         mod_strs = cls._get_mods(mods, native=True)
-        final_key = key_str.upper() if len(key_str) == 1 and key_str.isalpha() else key_str.capitalize()
+        final_key = (
+            key_str.upper()
+            if len(key_str) == 1 and key_str.isalpha()
+            else key_str.capitalize()
+        )
         sequence_str = "+".join(mod_strs + [final_key]) if mod_strs else final_key
 
-        return QKeySequence.fromString(sequence_str, QKeySequence.SequenceFormat.PortableText)
+        return QKeySequence.fromString(
+            sequence_str, QKeySequence.SequenceFormat.PortableText
+        )

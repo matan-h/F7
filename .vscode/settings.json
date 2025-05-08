@@ -1,0 +1,27 @@
+{
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "error",
+    "reportUndefinedVariable": "error",
+    "reportAttributeAccessIssue": "error"
+  },
+  "files.trimTrailingWhitespace": true,
+  "python.analysis.packageIndexDepths": [
+    {
+      "name": "PyQt6",
+      "depth": 2
+    }
+  ],
+  "editor.formatOnSave": true,
+  //
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+  },
+  "isort.args": [
+    "--profile",
+    "black"
+  ],
+}

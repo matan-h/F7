@@ -1,12 +1,35 @@
-import os,sys
-
-import string, re, json, random, math, io, string, collections, hashlib
-from datetime import datetime, date, timedelta
-from string import *
+import collections
+import hashlib
+import io
+import json
+import math
+import os
+import random
+import re
+import string
+import sys
 from collections import Counter, defaultdict
-from urllib.parse import unquote, unquote_plus, urlsplit, quote, quote_plus,urlparse
+from datetime import date, datetime, timedelta
+from string import *
+from urllib.parse import quote, quote_plus, unquote, unquote_plus, urlparse, urlsplit
 
-from string_utils import camel_case_to_snake,snake_case_to_camel,reverse,shuffle,strip_html,prettify,asciify,asciify,booleanize,strip_margin,roman_encode,roman_decode,uuid,random_string,secure_random_hex,words_count
+from string_utils import (
+    asciify,
+    booleanize,
+    camel_case_to_snake,
+    prettify,
+    random_string,
+    reverse,
+    roman_decode,
+    roman_encode,
+    secure_random_hex,
+    shuffle,
+    snake_case_to_camel,
+    strip_html,
+    strip_margin,
+    uuid,
+    words_count,
+)
 
 # shortcuts/longcuts
 ## string_utils

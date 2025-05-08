@@ -1,11 +1,14 @@
 from __future__ import annotations
-import re
+
 import os
+import re
 import traceback
 from typing import Optional
+
 from PyQt6.QtCore import QTimer, pyqtSignal
 
 from slick_launcher.utils import remove_none
+
 from .base_plugin import PluginInterface, Thread
 
 SYSPROMPT = """You are a string tool. You'll get input as:
@@ -46,7 +49,7 @@ class AIStreamWorker(Thread):
                     model=self.settings.ollama_model,
                     messages=messages,
                     stream=True,
-                    options= self._ollama_opts(),
+                    options=self._ollama_opts(),
                 )
                 for chunk in response:
                     if not self._running:
@@ -81,11 +84,11 @@ class AIStreamWorker(Thread):
             if self._running:
                 self.finished_signal.emit(buffer)
         except Exception as e:
-            self.error_occurred.emit(traceback.format_exc()+ str(e))
+            self.error_occurred.emit(traceback.format_exc() + str(e))
 
     def stop(self):
         self._running = False
-    
+
     @remove_none
     def _ollama_opts(self):
         opts = {
@@ -98,7 +101,7 @@ class AIStreamWorker(Thread):
             "num_predict": self.settings.max_tokens,
         }
         return opts
-    
+
     @remove_none
     def _llama_cpp_opts(self):
         opts = {
@@ -111,7 +114,7 @@ class AIStreamWorker(Thread):
         }
 
         return opts
-    
+
     @remove_none
     def _get_llama_cpp_kwargs(self):
         return {
@@ -189,7 +192,7 @@ class AiOllamaPlugin(PluginInterface):
 
         if is_preview:
             self._preview_buffer = ""
-        self.api.update_preview_content('') # hide the preview.
+        self.api.update_preview_content("")  # hide the preview.
         self.api.set_status("⏳ Contacting AI...")
 
         worker = AIStreamWorker(prompt, text, self.settings.ai_ollama)
@@ -206,7 +209,7 @@ class AiOllamaPlugin(PluginInterface):
             QTimer.singleShot(timeout * 1000, worker.stop)
 
     def _on_chunk(self, chunk: str, is_preview: bool):
-        print(chunk,end="")
+        print(chunk, end="")
         self._preview_buffer += chunk
         processed = self.extract_code(self._preview_buffer)
         self.api.update_preview_content(f"AI: {processed}")
@@ -220,7 +223,7 @@ class AiOllamaPlugin(PluginInterface):
             self.api.close_launcher(copy_and_close_text=result)
 
     def _on_error(self, msg: str):
-        print("AI error:",msg)
+        print("AI error:", msg)
         self.api.update_preview_content(msg)
         self.api.set_status(f"❌ Error: {msg}")
 
@@ -228,7 +231,7 @@ class AiOllamaPlugin(PluginInterface):
         if not manual:
             return
         cmd = command.lstrip(self.PREFIX).rstrip(self.SUFFIX)
-        
+
         if not cmd:
             return
         if cmd != self._preview_cmd:
