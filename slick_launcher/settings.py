@@ -13,6 +13,10 @@ class HotKeyType(str):
     pass
 
 
+class PresetList(list):
+    pass
+
+
 class Section:
     """Represents a section of settings, allowing attribute access to values."""
 
@@ -40,7 +44,16 @@ class SectionRegistrar:
         self.settings = settings
         self.section = section
 
-    def add(self, name, description, default, type_, options=None, nullable=False):
+    def add(
+        self,
+        name,
+        description,
+        default,
+        type_,
+        options=None,
+        nullable=False,
+        **ui_options,
+    ):
         """Register a setting in this section."""
         if default is None:
             nullable = True
@@ -54,6 +67,7 @@ class SectionRegistrar:
             "type": type_,
             "options": options,
             "nullable": nullable,
+            **ui_options,
         }
         self.settings._values[self.section][name] = default
 
