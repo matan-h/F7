@@ -19,19 +19,19 @@ class PythonEvalPlugin(PluginInterface):
     SUFFIX = None
     IS_DEFAULT = True # This handles input if no other plugin matches
     PRIORITY = 90     # Lower than AI prefix plugin
-    
+
     HAS_AUTOCOMPLETE = True # Signal that this plugin provides completions
 
     def __init__(self, launcher_instance,settings):
         super().__init__(launcher_instance,settings)
         self.eval_context = self._create_context()
-    
+
     def get_status_message(self) -> str:
         return "🐍 Python mode"
 
     def _evaluate(self, command: str, selected_text: str) -> tuple[str | None, str | None]:
         """Internal helper to evaluate, returning result and error."""
-        
+
         if not command:
             return None, None # No command, no result or error
 
@@ -40,13 +40,13 @@ class PythonEvalPlugin(PluginInterface):
 
             combined_buf = io.StringIO()
             fake_stdin = io.StringIO(selected_text)
-            # security:ignore. this eval command is the intent use of this plugin.
+            # security:ignore. this eval command is the intended use of this plugin.
             with redirect_stdin(fake_stdin), \
      contextlib.redirect_stdout(combined_buf), \
      contextlib.redirect_stderr(combined_buf):
 
-                result = smart_eval(command,self.eval_context) # TODO: better eval.
-            
+                result = smart_eval(command,self.eval_context)
+
             output = combined_buf.getvalue()
             if result is None and output:
                 result_str = output
@@ -97,7 +97,7 @@ class PythonEvalPlugin(PluginInterface):
             return result_str # Return the result string for the launcher to copy
         else:
             return None # No command entered
-    
+
     def _create_context(self):
         ctx = dotdict(builtins.__dict__)
         # ctx.space = " "
@@ -144,14 +144,14 @@ class PythonEvalPlugin(PluginInterface):
             return
 
         text_before_cursor = command[:cursor_pos]
-        
+
         # Determine the fragment to complete (e.g., "my_dict.ke" or "my_var")
         # WORD_BOUNDARY_RE helps find the start of a Python identifier or dotted path
         match = WORD_BOUNDARY_RE.search(text_before_cursor)
         if not match:
             self.api.hide_completion_popup()
             return
-            
+
         prefix_to_complete = match.group(1)
         if not prefix_to_complete: # Empty prefix found
             self.api.hide_completion_popup()
@@ -168,7 +168,7 @@ class PythonEvalPlugin(PluginInterface):
             if comp is None:
                 break
             completions.append(comp)
-        
+
         model = self.api.get_completion_model()
         completer_widget = self.api.get_completer()
 

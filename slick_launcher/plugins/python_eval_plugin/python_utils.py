@@ -1,6 +1,9 @@
+import binascii
 import csv,io,base64,json,ast,sys,builtins,re
 from contextlib import _RedirectStream
 import types
+import tokenize as tokenize
+
 # general utils:
 class redirect_stdin(_RedirectStream): # https://github.com/pyodide/pyodide/blob/main/docs/usage/faq.md
     _stream = "stdin"
@@ -18,17 +21,17 @@ class PyUtils:
         return "\n".join(map(f, self.text.split("\n")))
     def grep(self,text):
         return list(filter(lambda x: re.search(text, x), self.text.split("\n")))
-    
+
     def sub(self,a, b, count=0):
         return re.sub(a, b, self.text, count=count)
 
-    
+
     # eval-facing utils
     def _run_if(self,f):
         ignorelist = [str,format,min,max]
         if f in ignorelist:
             return
-        
+
         result = None
         if hasattr(f, '__self__') and f.__self__ is not builtins:
             if f.__self__==self.text:
@@ -45,8 +48,27 @@ class PyUtils:
             return result
         else:
             return None
-    
 
+def balance_fix(s):
+    stack = []
+    try:
+        tokens = tokenize.tokenize(io.BytesIO(s.encode('utf-8')).readline)
+        for tok in tokens:
+            tok_type = tok.type
+            tok_str = tok.string
+            if not tok_str: continue
+
+            if tok_type in (tokenize.STRING, tokenize.COMMENT):
+                continue  # Ignore brackets inside strings/comments
+            if tok_str in '([{':
+                stack.append({ '(': ')', '[': ']', '{': '}' }[tok_str])
+            elif tok_str in ')]}':
+                if stack and stack[-1] == tok_str:
+                    stack.pop()
+                # Else: ignore mismatched closing brackets
+    except (tokenize.TokenError, IndentationError):
+        pass  # Handle unterminated tokens or other errors
+    return s + ''.join(reversed(stack))
 
 def smart_eval(code,globals_dict=None): # inspired by pyodide CodeRunner : https://github.com/pyodide/pyodide/blob/4fbbbedc09496c6968086d69aadba75398718b13/src/py/_pyodide/_base.py#L172
     if globals_dict is None:
@@ -55,7 +77,10 @@ def smart_eval(code,globals_dict=None): # inspired by pyodide CodeRunner : https
     try:
         tree = ast.parse(code, mode='exec',filename="<main>")
     except SyntaxError:
-        raise
+        try:
+            tree = ast.parse(balance_fix(code),mode="exec",filename="<main>")
+        except SyntaxError:
+            raise
     if not tree.body:
         return None
     last_stmt = tree.body[-1]
@@ -67,11 +92,12 @@ def smart_eval(code,globals_dict=None): # inspired by pyodide CodeRunner : https
     else:
         exec(compile(tree, '<ast>', 'exec'), globals_dict)
         return None
+
 def _run_if(f,text):
     ignorelist = [str,format,min,max]
     if f in ignorelist:
         return
-    
+
     result = None
     if hasattr(f, '__self__') and f.__self__ is not builtins:
         if f.__self__==text:
@@ -89,7 +115,7 @@ def _run_if(f,text):
     else:
         return None
 
-def repr_as_json(obj,text):   
+def repr_as_json(obj,text):
     if callable(obj):
         maybe_out = _run_if(obj,text)
         if maybe_out: return maybe_out
@@ -97,13 +123,13 @@ def repr_as_json(obj,text):
         return obj
     if type(obj) is bytes:
         return repr(obj)
-    
+
     if type(obj) is map or type(obj) is filter or isinstance(obj, types.GeneratorType):
         obj = list(obj)
 
     if type(obj) is list and len(obj) < 50 and  all(type(x) is str for x in obj): # type: ignore
         return "\n".join(obj)
-    
+
     return repr(obj)
 
 
@@ -134,6 +160,6 @@ def auto_parse(text):
             decoded = base64.b64decode(text, validate=True).decode("utf-8")
             if decoded.isprintable():
                 parsed = decoded
-        except (base64.binascii.Error, ValueError,UnicodeDecodeError):
+        except (binascii.Error, ValueError,UnicodeDecodeError):
             pass
     return parsed
