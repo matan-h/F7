@@ -28,7 +28,8 @@ from PyQt6.QtWidgets import (
 from qt_material import apply_stylesheet
 
 from .converters import KeySequenceConverter
-from .settings import Color, HotKeyType, PresetList, Settings
+
+from .settings import Color, HotKeyType, Settings
 
 
 def color2h(color: QColor) -> str:
@@ -200,30 +201,6 @@ class SettingsDialog(QDialog):
                         value_widget.setText("")
                     value_widget.setPlaceholderText("e.g., item1, item2, item3")
                     h_layout.addWidget(value_widget, 1)
-                elif setting_type == PresetList:  # Handle PresetList type
-                    value_widget = QComboBox()
-                    presets = meta.get("options", [])
-                    # Add string representation of each preset to the combo box
-                    for preset in presets:
-                        # Assuming each preset dict has a 'name' key, otherwise use str()
-                        display_text = preset.get("name", str(preset))
-                        value_widget.addItem(
-                            display_text, userData=preset
-                        )  # Store the full dict as user data
-
-                    # Set initial selection
-                    if isinstance(current_value, dict):
-                        # Find the index of the current_value dict in the options
-                        try:
-                            initial_index = presets.index(current_value)
-                            value_widget.setCurrentIndex(initial_index)
-                        except ValueError:
-                            # If current_value is not in the options, select nothing or default
-                            value_widget.setCurrentIndex(-1)  # Or 0 for the first item
-                    else:
-                        value_widget.setCurrentIndex(-1)  # No preset selected initially
-
-                    h_layout.addWidget(value_widget, 1)
                 else:
                     print(
                         f"WARN: unknown type in settings: {section}.{name} ({meta['type']})",
@@ -268,9 +245,7 @@ class SettingsDialog(QDialog):
                 reset_button.setFixedWidth(
                     reset_button.fontMetrics().horizontalAdvance(" Reset ") + 10
                 )
-                if (
-                    value_widget or setting_type == PresetList
-                ):  # Add reset button for PresetList even if value_widget is QComboBox
+                if value_widget is not None:
                     h_layout.addWidget(reset_button)
 
                 field_layout = QVBoxLayout()
@@ -334,12 +309,6 @@ class SettingsDialog(QDialog):
                         )
                     elif setting_type == list and isinstance(value_widget, QLineEdit):
                         value_widget.textChanged.connect(self.apply_changes_to_settings)
-                    elif setting_type == PresetList and isinstance(
-                        value_widget, QComboBox
-                    ):  # Connect for PresetList
-                        value_widget.currentIndexChanged.connect(
-                            self.apply_changes_to_settings
-                        )
 
             tab_content_widget.setLayout(layout)
 
@@ -410,6 +379,12 @@ class SettingsDialog(QDialog):
         if enabled_widget:
             enabled_widget.setChecked(default_value is not None)
 
+        # Temporarily block signals to prevent recursive apply calls during reset
+        if value_widget:
+            blocker = QSignalBlocker(value_widget)
+        if enabled_widget:
+            blocker_enabled = QSignalBlocker(enabled_widget)
+
         if setting_type == bool and isinstance(value_widget, QCheckBox):
             value_widget.setChecked(
                 default_value if isinstance(default_value, bool) else False
@@ -460,18 +435,12 @@ class SettingsDialog(QDialog):
                 value_widget.setText(default_value)
             else:
                 value_widget.setText("")
-        elif setting_type == PresetList and isinstance(
-            value_widget, QComboBox
-        ):  # Reset for PresetList
-            presets = meta.get("options", [])
-            if isinstance(default_value, dict):
-                try:
-                    default_index = presets.index(default_value)
-                    value_widget.setCurrentIndex(default_index)
-                except ValueError:
-                    value_widget.setCurrentIndex(-1)  # Default not found in options
-            else:
-                value_widget.setCurrentIndex(-1)  # Default is None or not a dict
+
+        # Unblock signals
+        if value_widget:
+            del blocker
+        if enabled_widget:
+            del blocker_enabled
 
         # Automatically apply the reset change
         self.apply_changes_to_settings()
@@ -504,8 +473,6 @@ class SettingsDialog(QDialog):
                             new_value = Color("")
                         elif setting_type == list:
                             new_value = []
-                        elif setting_type == PresetList:
-                            new_value = {}  # Default for non-nullable PresetList
 
                         else:
                             new_value = meta.get(
@@ -558,223 +525,6 @@ class SettingsDialog(QDialog):
                             ]
                         else:
                             new_value = []  # Default for non-nullable list
-                    elif setting_type == PresetList and isinstance(
-                        value_widget, QComboBox
-                    ):  # Get value for PresetList
-                        selected_index = value_widget.currentIndex()
-                        if selected_index != -1:
-                            preset_dict = value_widget.itemData(
-                                selected_index
-                            )  # Retrieve the stored dict
-                            new_value = preset_dict  # The PresetList setting itself stores the selected dict
-
-                            # --- Apply settings from the preset dictionary ---
-                            print(
-                                f"Applying settings from preset: {preset_dict.get('name', 'Unnamed Preset')}"
-                            )
-                            for setting_key, setting_value in preset_dict.items():
-                                if setting_key == "name":  # Skip the 'name' key
-                                    continue
-
-                                try:
-                                    # Parse the setting key (e.g., "section.name")
-                                    target_section, target_name = setting_key.split(".")
-                                    target_widget_data = self.widget_map.get(
-                                        (target_section, target_name)
-                                    )
-
-                                    if target_widget_data:
-                                        target_value_widget = target_widget_data[
-                                            "value"
-                                        ]
-                                        target_meta = target_widget_data["meta"]
-                                        target_setting_type = target_meta["type"]
-                                        target_enabled_widget = target_widget_data.get(
-                                            "enabled"
-                                        )
-                                        target_is_nullable = (
-                                            target_meta.get("default") is None
-                                        )
-
-                                        # Temporarily block signals to prevent recursion
-                                        blocker = QSignalBlocker(target_value_widget)
-                                        if target_enabled_widget:
-                                            blocker_enabled = QSignalBlocker(
-                                                target_enabled_widget
-                                            )
-
-                                        # Update the target widget based on its type
-                                        if target_enabled_widget and target_is_nullable:
-                                            target_enabled_widget.setChecked(
-                                                setting_value is not None
-                                            )
-
-                                        if (
-                                            setting_value is not None
-                                        ):  # Only update value widget if the preset value is not None
-                                            if (
-                                                target_setting_type == bool
-                                                and isinstance(
-                                                    target_value_widget, QCheckBox
-                                                )
-                                            ):
-                                                target_value_widget.setChecked(
-                                                    setting_value
-                                                )
-                                            elif (
-                                                target_setting_type == str
-                                                and isinstance(
-                                                    target_value_widget, QComboBox
-                                                )
-                                            ):
-                                                index = target_value_widget.findText(
-                                                    str(setting_value)
-                                                )
-                                                if index != -1:
-                                                    target_value_widget.setCurrentIndex(
-                                                        index
-                                                    )
-                                            elif (
-                                                target_setting_type == str
-                                                and isinstance(
-                                                    target_value_widget,
-                                                    (QLineEdit, QTextEdit),
-                                                )
-                                            ):
-                                                target_value_widget.setText(
-                                                    str(setting_value)
-                                                )
-                                            elif (
-                                                target_setting_type == int
-                                                and isinstance(
-                                                    target_value_widget, QSpinBox
-                                                )
-                                            ):
-                                                target_value_widget.setValue(
-                                                    int(setting_value)
-                                                )
-                                            elif (
-                                                target_setting_type == float
-                                                and isinstance(
-                                                    target_value_widget, QDoubleSpinBox
-                                                )
-                                            ):
-                                                target_value_widget.setValue(
-                                                    float(setting_value)
-                                                )
-                                            elif (
-                                                target_setting_type == Color
-                                                and isinstance(
-                                                    target_value_widget, QPushButton
-                                                )
-                                            ):
-                                                q_color = QColor(str(setting_value))
-                                                if q_color.isValid():
-                                                    hex_argb = color2h(q_color)
-                                                    target_value_widget.setProperty(
-                                                        "currentColor", q_color
-                                                    )
-                                                    target_value_widget.setStyleSheet(
-                                                        f"background-color: {hex_argb}; border-radius: 4px; padding: 8px; min-width: 30px;"
-                                                    )
-                                                else:
-                                                    print(
-                                                        f"Warning: Invalid color value '{setting_value}' for {setting_key}.",
-                                                        file=sys.stderr,
-                                                    )
-                                            elif (
-                                                target_setting_type == HotKeyType
-                                                and isinstance(
-                                                    target_value_widget,
-                                                    QKeySequenceEdit,
-                                                )
-                                            ):
-                                                qks = KeySequenceConverter.to_qkeysequence(
-                                                    str(setting_value)
-                                                )
-                                                target_value_widget.setKeySequence(qks)
-                                            elif (
-                                                target_setting_type == list
-                                                and isinstance(
-                                                    target_value_widget, QLineEdit
-                                                )
-                                            ):
-                                                if isinstance(setting_value, list):
-                                                    target_value_widget.setText(
-                                                        ", ".join(
-                                                            map(str, setting_value)
-                                                        )
-                                                    )
-                                                else:
-                                                    # Attempt to parse comma-separated string if not already a list
-                                                    target_value_widget.setText(
-                                                        str(setting_value)
-                                                    )
-                                            elif target_setting_type == PresetList:
-                                                print(
-                                                    f"Warning: Preset '{setting_key}' targets another PresetList. Skipping nested preset application.",
-                                                    file=sys.stderr,
-                                                )
-                                            else:
-                                                print(
-                                                    f"Warning: Unsupported target setting type {target_setting_type} for {setting_key}.",
-                                                    file=sys.stderr,
-                                                )
-
-                                        # Manually update the settings object for the target setting
-                                        if target_section not in self.settings._values:
-                                            self.settings._values[target_section] = {}
-
-                                        # Basic type compatibility check before manual update
-                                        is_target_correct_type = False
-                                        if setting_value is None and target_is_nullable:
-                                            is_target_correct_type = True
-                                        elif setting_value is not None:
-                                            # Need more robust type checking here if necessary,
-                                            # but for simplicity, we'll rely on the widget update
-                                            # implicitly handling some type conversions.
-                                            # A more thorough check would compare type(setting_value)
-                                            # with target_setting_type.
-                                            is_target_correct_type = True  # Assume compatible for now after widget update attempt
-
-                                        if is_target_correct_type:
-                                            self.settings._values[target_section][
-                                                target_name
-                                            ] = setting_value
-                                        else:
-                                            print(
-                                                f"Warning: Type mismatch when applying preset value for {setting_key}. "
-                                                f"Expected {target_setting_type}, got {type(setting_value)} with value '{setting_value}'. Not updating target setting.",
-                                                file=sys.stderr,
-                                            )
-
-                                        # Unblock signals
-                                        del blocker
-                                        if target_enabled_widget:
-                                            del blocker_enabled
-
-                                    else:
-                                        print(
-                                            f"Warning: Target setting '{setting_key}' from preset not found in widget map.",
-                                            file=sys.stderr,
-                                        )
-
-                                except ValueError:
-                                    print(
-                                        f"Warning: Invalid setting key format '{setting_key}' in preset. Expected 'section.name'.",
-                                        file=sys.stderr,
-                                    )
-                                except Exception as apply_e:
-                                    print(
-                                        f"Error applying preset setting '{setting_key}': {apply_e}",
-                                        file=sys.stderr,
-                                    )
-                            # --- End of applying settings from the preset dictionary ---
-
-                        elif is_nullable:
-                            new_value = None
-                        else:
-                            new_value = {}  # Default for non-nullable PresetList
 
                 # Update the settings object
                 if section not in self.settings._values:
@@ -791,10 +541,6 @@ class SettingsDialog(QDialog):
                         is_correct_type = isinstance(new_value, HotKeyType)
                     elif setting_type == list:
                         is_correct_type = isinstance(new_value, list)
-                    elif setting_type == PresetList:  # Type check for PresetList
-                        is_correct_type = isinstance(new_value, dict) or isinstance(
-                            new_value, PresetList
-                        )  # Accept dict or PresetList instance
 
                     else:
                         is_correct_type = isinstance(new_value, setting_type)
