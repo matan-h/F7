@@ -21,7 +21,7 @@ def send_socket_command(command: str):
 
 
 # Create a new metaclass that inherits from both
-class Meta(type(QMainWindow), ABCMeta):
+class Meta(type(QMainWindow), ABCMeta):  # type: ignore
     pass
 
 

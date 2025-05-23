@@ -1,5 +1,4 @@
 # ui.py
-import sys
 
 from PyQt6.QtCore import QStringListModel, Qt
 from PyQt6.QtWidgets import (
@@ -11,8 +10,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-from .settings import Color
 
 
 class SlickUIFactory:

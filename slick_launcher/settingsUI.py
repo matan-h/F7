@@ -28,7 +28,6 @@ from PyQt6.QtWidgets import (
 from qt_material import apply_stylesheet
 
 from .converters import KeySequenceConverter
-
 from .settings import Color, HotKeyType, Settings
 
 

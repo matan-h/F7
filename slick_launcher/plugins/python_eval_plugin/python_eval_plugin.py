@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import QCompleter, QLabel, QTextEdit
 
 from ...utils import WORD_BOUNDARY_RE, dotdict
 from ..base_plugin import PluginInterface
+from .cyber import ctx as cyber_ctx
 from .python_utils import PyUtils, auto_parse, redirect_stdin, repr_as_json, smart_eval
 from .static_globals import static_globals
 
@@ -114,6 +115,7 @@ class PythonEvalPlugin(PluginInterface):
         # ctx.sjoin = ctx.spacejoin = " ".join
         # ctx.vjoin = ctx.voidjoin = "".join
         ctx.update(static_globals)
+        ctx.update(cyber_ctx)
         return ctx
 
     def _update_context(self, text: str):
@@ -139,10 +141,10 @@ class PythonEvalPlugin(PluginInterface):
         ctx.split_on = ctx.split
         # utility functions
         utils = PyUtils(text)
-        ctx.lines_map = utils.lines_map
+        ctx.fork = ctx.lines_map = utils.lines_map
         ctx.grep = utils.grep
         ctx.sub = utils.sub
-        ctx.lines_map = utils.lines_map
+        ctx.auto_parse = auto_parse
         # auto parse
         try:
             auto = auto_parse(text) or text

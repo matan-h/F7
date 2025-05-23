@@ -1,4 +1,5 @@
 import collections
+import functools
 import hashlib
 import io
 import json
@@ -44,5 +45,4 @@ vjoin = voidjoin = "".join
 # url
 urldecode = unquote_plus
 urlencode = quote_plus
-
 static_globals = globals()

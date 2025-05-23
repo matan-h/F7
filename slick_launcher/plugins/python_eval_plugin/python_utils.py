@@ -29,14 +29,16 @@ class PyUtils:
         self.text = text
 
     # user-facing utils
-    def lines_map(self, f):
-        return "\n".join(map(f, self.text.split("\n")))
+    def lines_map(self, f, src=None):
+        return "\n".join(map(f, (src or self.text).split("\n")))
 
-    def grep(self, text):
-        return list(filter(lambda x: re.search(text, x), self.text.split("\n")))
+    def grep(self, text, src=None):
+        return list(
+            filter(lambda x: re.search(text, x), (src or self.text).split("\n"))
+        )
 
-    def sub(self, a, b, count=0):
-        return re.sub(a, b, self.text, count=count)
+    def sub(self, a, b, src=None, count=0):
+        return re.sub(a, b, (src or self.text), count=count)
 
     # eval-facing utils
     def _run_if(self, f):
