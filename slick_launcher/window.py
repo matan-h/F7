@@ -682,18 +682,6 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
         self.core.reset_history_index_to_latest()
         self._adjust_main_window_height()  # Recalculate height for clean state
 
-    def close_launcher_window(self):  # Renamed from 'close' to be more specific
-        """Closes or hides the launcher window based on 'startInTray' setting."""
-        if (
-            self.core.settings.system.startInTray
-            and self.tray_icon
-            and self.tray_icon.isVisible()
-        ):
-            self._reset_ui_and_state()  # Clear content before hiding
-            self.hide()  # Hide the window, it remains in tray
-        else:
-            self.quit_application()  # No tray or not set to start in tray, so quit
-
     def quit_application(self):
         """Initiates the application quit sequence."""
         # Cleanup is handled by _handle_application_quit via app.aboutToQuit signal
@@ -775,9 +763,10 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
         Shows the main launcher window, captures OS selection, and sets focus.
         Called from tray or when a 'show' socket command is received.
         """
-        self._reset_ui_and_state()  # Ensure clean state when shown
         self._capture_initial_os_selection()  # Get current OS selected text
-        self.showNormal()  # Show the window normally (not maximized or minimized)
+
+        self.setVisible(True)
+
         self.activateWindow()  # Bring to front and give focus
         self.raise_()  # Ensure it's on top of other windows
         self.input_field.setFocus()  # Set focus to the input field
@@ -809,6 +798,11 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
         # Call super if singleInstance has its own processing logic you want to preserve
         # super().process_socket_command(command_data)
 
+    def disappear(self):
+        self._reset_ui_and_state()
+        self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
+        self.setVisible(False)
+
     # Override closeEvent to handle tray icon logic if window is closed by user (e.g., 'X' button)
     def closeEvent(self, event):
         """
@@ -820,10 +814,20 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
             and self.tray_icon
             and self.tray_icon.isVisible()
         ):
-            self._reset_ui_and_state()
-            self.hide()  # Hide the window, don't accept the close event which would quit
+            self.disappear()
             event.ignore()  # Important: ignore the event to prevent actual closing
         else:
             # Not in tray mode or no tray icon, so proceed with normal close (which leads to quit)
             event.accept()
             self.quit_application()  # Ensure quit sequence is initiated
+
+    def close_launcher_window(self):  # Renamed from 'close' to be more specific
+        """Closes or hides the launcher window based on 'startInTray' setting."""
+        if (
+            self.core.settings.system.startInTray
+            and self.tray_icon
+            and self.tray_icon.isVisible()
+        ):
+            self.disappear()
+        else:
+            self.quit_application()  # No tray or not set to start in tray, so quit

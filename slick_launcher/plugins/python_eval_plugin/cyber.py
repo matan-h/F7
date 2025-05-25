@@ -31,6 +31,7 @@ def byteMethod(func):
                     return text
             except UnicodeDecodeError:
                 pass
+        return result
 
     return inner
 
@@ -83,7 +84,7 @@ def xor(s: bytes, k: int | str, encoding="utf-8"):
 
     k = (k * len(s))[: len(s)]
 
-    return bytes(a ^ b for a, b in zip(s, k)).hex()
+    return bytes(a ^ b for a, b in zip(s, k))
 
 
 ctx.xor = xor
