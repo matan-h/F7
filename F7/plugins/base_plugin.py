@@ -4,16 +4,10 @@ from typing import TYPE_CHECKING, List, Optional
 
 from PyQt6.QtCore import QThread
 
-# Assuming types.py defines pyqtSignal, if not, import from QtCore
-# from PyQt6.QtCore import pyqtSignal
 
 if TYPE_CHECKING:
     from ..api import API
     from ..settings import Settings
-
-    # If your project has a common types.py for pyqtSignal, use this:
-    # from ..types import pyqtSignal
-    # Otherwise, for standard Qt, you'd import pyqtSignal from QtCore in worker threads.
 
 
 class Thread(QThread):
@@ -30,8 +24,8 @@ class Thread(QThread):
 
 class PluginInterface(ABC):
     """
-    Abstract Base Class for Slick Launcher plugins.
-    Plugins interact with the launcher via the provided API instance.
+    Abstract Base Class for F7 plugins.
+    Plugins interact with the F7 window via the provided API instance.
     """
 
     NAME: str = "Base Plugin"
@@ -46,7 +40,7 @@ class PluginInterface(ABC):
         Initialize the plugin.
 
         Args:
-            api_instance: An instance of the API class for interacting with the launcher.
+            api_instance: An instance of the API class for interacting with the F7 window.
             settings: The application settings object.
         """
         self.api = api_instance
@@ -85,10 +79,9 @@ class PluginInterface(ABC):
 
         Returns:
             A string containing the result to be copied to the clipboard.
-            If a string is returned, `self.api.close_launcher(result)` will be called.
+            If a string is returned, `self.api.close(result)` will be called.
             If None is returned, the plugin is responsible for any further actions,
-            including calling `self.api.close_launcher()` or `self.api.quit_application()`
-            if needed, or updating status/preview for errors or async operations.
+            including calling `self.api.close()` if needed, or updating status/preview for errors or async operations.
         """
         pass
 

@@ -5,7 +5,7 @@ from PyQt6.QtCore import QByteArray
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import QApplication, QMainWindow
 
-SERVER_NAME = "slick_launcher"  # Ensure this is unique
+SERVER_NAME = "F7"
 
 
 def send_socket_command(command: str):
@@ -27,7 +27,6 @@ class Meta(type(QMainWindow), ABCMeta):  # type: ignore
 
 class singleInstance(QMainWindow, metaclass=Meta):
     def __init__(self):
-
         # Set up the local server
         self.server = QLocalServer()
         self.server.newConnection.connect(self.handle_new_connection)

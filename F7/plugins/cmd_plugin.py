@@ -200,14 +200,14 @@ class CmdPlugin(PluginInterface):
                 elif stdout and stdout.strip():
                     error_message += f": {stdout.strip()}"  # Error might be on stdout
                 self.api.set_status(error_message, self.NAME)
-                # Show error in preview as well, then launcher stays open
+
                 self.api.update_preview_content(error_message)
                 return None  # Stay open to show error
             else:
                 result_output = stdout.strip()
                 if stderr and stderr.strip():  # Append stderr if any, even on success
                     result_output += f"\n\n[stderr output:]\n{stderr.strip()}"
-                # API will copy this result and close the launcher
+                # API will copy this result
                 return result_output
 
         except subprocess.TimeoutExpired:
@@ -233,7 +233,6 @@ class CmdPlugin(PluginInterface):
             self.worker.stop()  # Signal the worker to stop
             self.worker.quit()  # Politely ask QThread to finish
             if not self.worker.wait(500):  # Wait a bit
-                # print(f"{self.NAME} Plugin: Worker thread did not stop gracefully, terminating.")
                 self.worker.terminate()  # Forcefully terminate
                 self.worker.wait()  # Wait for termination to complete
         self.worker = None

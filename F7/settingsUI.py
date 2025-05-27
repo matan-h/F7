@@ -53,7 +53,7 @@ class SettingsDialog(QDialog):
 
         # Map to store widgets for easy access
         self.widget_map = {}
-        self.setWindowTitle("Slick Launcher Settings")
+        self.setWindowTitle("F7 Settings")
         self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
         self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
 

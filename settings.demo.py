@@ -2,9 +2,9 @@
 import sys
 from PyQt6.QtGui import QKeySequence
 from PyQt6.QtWidgets import QApplication, QDialog
-from slick_launcher.converters import KeySequenceConverter
-from slick_launcher.settings import Color, HotKeyType
-from slick_launcher.settingsUI import SettingsDialog
+from F7.converters import KeySequenceConverter
+from F7.settings import Color, HotKeyType
+from F7.settingsUI import SettingsDialog
 
 
 if __name__ == "__main__":

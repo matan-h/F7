@@ -1,4 +1,3 @@
-# slick_window.py
 import os
 import sys
 import traceback
@@ -18,29 +17,27 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from slick_launcher.hotkey import HotkeyListener
-from slick_launcher.types import QInstance
+from F7.hotkey import HotkeyListener
+from F7.types import QInstance
 
 from .api import API
 from .core import CoreLogic
-from .plugins.base_plugin import PluginInterface  # For type hinting
-from .settingsUI import SettingsDialog  # For opening settings
-from .singleInstance import singleInstance  # Base class for single instance app
-from .ui import SlickUIFactory
-from .utils import WORD_BOUNDARY_RE  # For autocompletion prefix detection
+from .plugins.base_plugin import PluginInterface
+from .settingsUI import SettingsDialog
+from .singleInstance import singleInstance
+from .ui import UIFactory
+from .utils import WORD_BOUNDARY_RE
 
 
-class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
+class F7Window(singleInstance):
     """
-    The main application window for Slick Launcher.
+    The main application window for F7.
     It handles UI events, interacts with CoreLogic for business logic,
-    and uses SlickUIFactory to build its user interface.
+    and uses UIFactory to build its user interface.
     """
 
     # Signal to notify plugins about cleanup (e.g., before application quits)
-    aboutToQuitSignal = (
-        pyqtSignal()
-    )  # Renamed from 'aboutToQuit' to avoid potential clashes
+    aboutToQuitSignal = pyqtSignal()
     # Signal emitted when settings (especially visual ones) are reloaded and applied
     settings_reloaded_signal = pyqtSignal()
 
@@ -48,7 +45,7 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
         """
         Initializes the main window, core logic, UI elements, and connects signals.
         """
-        super().__init__()  # Call parent constructor (singleInstance)
+        super().__init__()
         self.core = CoreLogic()
         self.api = API(self)
         self.hotkey_listener = None
@@ -72,8 +69,8 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
         )
 
         # --- UI Setup ---
-        self._init_ui_elements()  # Create UI using SlickUIFactory
-        self._connect_signals_and_handlers()  # Connect event handlers
+        self._init_ui_elements()
+        self._connect_signals_and_handlers()
 
         # --- Post-UI Setup ---
         self.update_status_bar()  # Set initial status bar message
@@ -87,20 +84,20 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
 
     def _init_ui_elements(self):
         """
-        Initializes the window's appearance and creates UI widgets using SlickUIFactory.
+        Initializes the window's appearance and creates UI widgets using UIFactory.
         """
-        self.setWindowTitle("Slick Launcher")
+        self.setWindowTitle("F7")
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
-        )  # Standard flags for this type of launcher
+        )  # Standard flags for this kind of app (frameless, always on top, and not displayed in taskbar )
         self.setAttribute(
             Qt.WidgetAttribute.WA_TranslucentBackground
         )  # For custom rounded look
 
         # Create UI widgets using the factory
-        ui_elements = SlickUIFactory.create_launcher_widgets(parent_widget=self)
+        ui_elements = UIFactory.create_F7_widgets(parent_widget=self)
         self.main_widget: QWidget = ui_elements["main_widget"]
         self.input_field: QLineEdit = ui_elements["input_field"]
         self.preview_output: QTextEdit = ui_elements["preview_output"]
@@ -114,7 +111,7 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
         self.apply_current_stylesheet()
 
         # Initial window sizing and positioning
-        self.setFixedWidth(500)  # Fixed width for the launcher
+        self.setFixedWidth(500)  # Fixed width.
         self.resize(500, 1)  # Start with minimal height, will adjust
         self._center_window()
 
@@ -124,9 +121,7 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
         """
         self.input_field.installEventFilter(self)  # For key press handling in input
         self.input_field.textChanged.connect(lambda: self._handle_input_change(False))
-        self.completer.activated[str].connect(
-            self._insert_completion_from_popup
-        )  # Item selected from completer
+        self.completer.activated[str].connect(self._insert_completion_from_popup)
 
         if self.core.settings.system.closeOnBlur:
             # Store the connection object to manage it (disconnect/reconnect)
@@ -145,7 +140,7 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
         Generates and applies the stylesheet based on current settings.
         Emits a signal indicating that visual settings have been reloaded.
         """
-        qcss = SlickUIFactory.generate_stylesheet(self.core.settings)
+        qcss = UIFactory.generate_stylesheet(self.core.settings)
         self.setStyleSheet(qcss)
         self.settings_reloaded_signal.emit()  # Notify interested components (e.g., plugins)
 
@@ -200,7 +195,7 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
     def _reload_visual_settings(self):
         """
         Called after settings are changed (e.g., from SettingsDialog).
-        Reloads settings from memory (assuming SettingsDialog updated them) and applies stylesheet.
+        Reloads settings from memory and applies stylesheet.
         """
         print("Window: Reloading visual settings...")
         self.apply_current_stylesheet()
@@ -508,7 +503,7 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
                     return True
 
                 elif key == Qt.Key.Key_Escape:
-                    self.close_launcher_window()  # Close/hide the launcher
+                    self.close_window()
                     event.accept()
                     return True
 
@@ -622,7 +617,7 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
             )  # Show truncated error
 
     def _copy_to_clipboard_and_close(self, result_text: str):
-        """Copies the given text to clipboard and closes the launcher window."""
+        """Copies the given text to clipboard and closes the window."""
         clipboard = QGuiApplication.clipboard()
         if clipboard:
             clipboard.setText(str(result_text))  # Ensure it's a string
@@ -631,14 +626,14 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
             )  # Truncate for status
             self.status_bar.setText(f"📋 Result copied: {result_preview}...")
             # Close after a short delay to allow user to see the status message
-            QTimer.singleShot(200, self.close_launcher_window)
+            QTimer.singleShot(200, self.close_window)
         else:
             self.status_bar.setText("INTERNAL Error: Could not access clipboard.")
 
     def _on_focus_changed(self, old_widget: QWidget | None, new_widget: QWidget | None):
         """
         Handles application focus changes. If 'closeOnBlur' is enabled,
-        this will close the launcher if it loses focus to a non-child widget.
+        this will close the window if it loses focus to a non-child widget.
         """
         # Quit if focus is lost (unless a child widget like preview or completer popup gained focus)
         # IMPORTANT: Check if new_widget is None (happens during shutdown)
@@ -647,7 +642,7 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
             not self.isAncestorOf(new_widget) and new_widget is not self
         ):
             # Add a small delay to prevent quitting if focus briefly shifts during interaction
-            # (e.g., clicking on a menu item of the launcher itself if it had one)
+            # (e.g., clicking on a menu item of the window itself if it had one)
             QTimer.singleShot(150, self._check_and_close_if_focus_lost)
 
     def _check_and_close_if_focus_lost(self):
@@ -667,7 +662,7 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
                     and widget.parent() is self
                 ):  # Crude check
                     return  # Don't close if a modal child is active
-            self.close_launcher_window()
+            self.close_window()
 
     def _reset_ui_and_state(self):
         """Resets the UI elements and internal state to default."""
@@ -730,17 +725,15 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
             print("Warning: Could not load tray icon.", file=sys.stderr)
 
         self.tray_icon = QSystemTrayIcon(icon, self)
-        self.tray_icon.setToolTip("Slick Launcher")
+        self.tray_icon.setToolTip("F7")
 
         tray_menu = QMenu(self)  # Parent menu to self for proper lifetime management
         show_action = QAction(
-            "Show Launcher", self, triggered=self.show_window_from_tray_or_socket
+            "Show", self, triggered=self.show_window_from_tray_or_socket
         )
         settings_action = QAction("Settings", self, triggered=self.open_settings_dialog)
         tray_menu.addSeparator()
-        quit_action = QAction(
-            "Quit Slick Launcher", self, triggered=self.quit_application
-        )
+        quit_action = QAction("Quit F7", self, triggered=self.quit_application)
 
         tray_menu.addAction(show_action)
         tray_menu.addAction(settings_action)
@@ -760,7 +753,7 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
 
     def show_window_from_tray_or_socket(self):  # Unified method for showing
         """
-        Shows the main launcher window, captures OS selection, and sets focus.
+        Shows the main window, captures OS selection, and sets focus.
         Called from tray or when a 'show' socket command is received.
         """
         self._capture_initial_os_selection()  # Get current OS selected text
@@ -795,15 +788,13 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
             )
         else:
             print(f"Window: Unknown socket command received: {command_data}")
-        # Call super if singleInstance has its own processing logic you want to preserve
-        # super().process_socket_command(command_data)
 
     def disappear(self):
         self._reset_ui_and_state()
         self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
         self.setVisible(False)
 
-    # Override closeEvent to handle tray icon logic if window is closed by user (e.g., 'X' button)
+    # Override closeEvent to handle tray icon logic if window is closed by user
     def closeEvent(self, event):
         """
         Overrides QWidget.closeEvent. Called when the user attempts to close the window.
@@ -821,8 +812,8 @@ class SlickLauncherWindow(singleInstance):  # Inherits from singleInstance
             event.accept()
             self.quit_application()  # Ensure quit sequence is initiated
 
-    def close_launcher_window(self):  # Renamed from 'close' to be more specific
-        """Closes or hides the launcher window based on 'startInTray' setting."""
+    def close_window(self):
+        """Closes or hides the window based on 'startInTray' setting."""
         if (
             self.core.settings.system.startInTray
             and self.tray_icon

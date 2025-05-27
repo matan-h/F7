@@ -12,16 +12,16 @@ from PyQt6.QtWidgets import (
 )
 
 
-class SlickUIFactory:
+class UIFactory:
     """
-    Factory class responsible for creating and styling UI elements for Slick Launcher.
+    Factory class responsible for creating and styling UI elements for F7.
     This class does not handle event logic, only UI construction and appearance.
     """
 
     @staticmethod
-    def create_launcher_widgets(parent_widget=None) -> dict:
+    def create_F7_widgets(parent_widget=None) -> dict:
         """
-        Creates the primary UI widgets for the launcher.
+        Creates the primary UI widgets for the F7 window.
 
         Args:
             parent_widget: The parent widget for the created UI elements.
@@ -52,9 +52,7 @@ class SlickUIFactory:
         )  # Parent to input_field
         completer.setWidget(input_field)  # Associate completer with the input field
         completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        completer.setCaseSensitivity(
-            Qt.CaseSensitivity.CaseSensitive
-        )  # Python is case-sensitive
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseSensitive)
         completer.setFilterMode(
             Qt.MatchFlag.MatchStartsWith
         )  # Standard completion filter
@@ -106,52 +104,45 @@ class SlickUIFactory:
         Returns:
             str: A QSS string for styling the application.
         """
-        colors = settings_instance.colors  # Access the 'colors' section from settings
-
-        def get_hex(
-            color_setting_value, default_hex="#ffffff"
-        ) -> str:  # TODO: remove this function
-            """Safely gets a hex string from a setting, defaulting if invalid."""
-            return color_setting_value
+        colors = settings_instance.colors
 
         # Define QSS using f-string and pulling colors from settings
-        # Fallback values are provided in case a setting is missing or malformed
         qcss = f"""
         #MainWidget {{
-            background: {get_hex(colors.main_widget_bg, '#282c34')};
-            border: 1px solid {get_hex(colors.main_widget_border, '#ffffff1a')};
+            background: {colors.main_widget_bg};
+            border: 1px solid {colors.main_widget_border};
             border-radius: 6px;
         }}
         #InputField {{
-            background: {get_hex(colors.input_bg, '#1e222a')};
-            border: 1px solid {get_hex(colors.input_border, '#ffffff14')};
+            background: {colors.input_bg};
+            border: 1px solid {colors.input_border};
             border-radius: 4px;
-            color: {get_hex(colors.input_text, '#abb2bf')};
+            color: {colors.input_text};
             padding: 8px 12px;
             font-size: 16px;
         }}
         #InputField:focus {{
-            border: 1px solid {get_hex(colors.input_focus_border, '#4682b4')};
+            border: 1px solid {colors.input_focus_border};
         }}
         #PreviewOutput {{
-            background: {get_hex(colors.preview_bg, '#1e222a')};
-            border: 1px solid {get_hex(colors.preview_border, '#ffffff0d')};
+            background: {colors.preview_bg};
+            border: 1px solid {colors.preview_border};
             border-radius: 4px;
-            color: {get_hex(colors.preview_text, '#abb2bf')};
+            color: {colors.preview_text};
             font-family: 'Fira Code', 'Consolas', monospace;
             font-size: 13px;
             padding: 4px 8px;
         }}
         #StatusBar {{
-            color: {get_hex(colors.status_bar_text, '#5c6370')};
+            color: {colors.status_bar_text};
             font-size: 11px;
             padding: 2px 4px;
         }}
         #CompletionPopup {{
-            background: {get_hex(colors.completion_popup_bg, '#32363e')};
-            border: 1px solid {get_hex(colors.completion_popup_border, '#ffffff26')};
+            background: {colors.completion_popup_bg};
+            border: 1px solid {colors.completion_popup_border};
             border-radius: 4px;
-            color: {get_hex(colors.completion_popup_text, '#abb2bf')};
+            color: {colors.completion_popup_text};
             font-size: 13px;
             padding: 2px;
         }}
@@ -160,8 +151,8 @@ class SlickUIFactory:
             border-radius: 3px;
         }}
         #CompletionPopup::item:selected {{
-            background-color: {get_hex(colors.completion_item_selected_bg, '#4682b4')};
-            color: {get_hex(colors.completion_item_selected_text, '#ffffff')};
+            background-color: {colors.completion_item_selected_bg};
+            color: {colors.completion_item_selected_text};
         }}
     """
 

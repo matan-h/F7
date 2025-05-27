@@ -8,22 +8,19 @@ from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtWidgets import QCompleter, QLabel, QTextEdit
 
 if TYPE_CHECKING:
-    from window import SlickLauncherWindow
+    from .window import F7Window
 
     from .settings import Settings
 
 
 class API:
     """
-    API class for plugins to interact with the SlickLauncher window and core functionalities.
+    API class for plugins to interact with the F7 window and core functionalities.
     """
 
-    def __init__(self, window_instance: SlickLauncherWindow):
+    def __init__(self, window_instance: F7Window):
         """
-        Initializes the API with a reference to the main launcher window.
-
-        Args:
-            window_instance: The instance of SlickLauncherWindow.
+        Initializes the API with a reference to the main window.
         """
         self._window = window_instance
 
@@ -31,6 +28,7 @@ class API:
         """
         PRIVATE: Triggers an adjustment of the main window's height to fit its contents.
         This is called internally by methods that change content affecting window size.
+        The public method is update_preview_content().
         """
         self._window._adjust_main_window_height()
 
@@ -85,13 +83,13 @@ class API:
 
     def get_input_text(self) -> str:
         """
-        Returns the current text from the launcher's input field.
+        Returns the current text from the F7 input field.
         """
         return self._window.input_field.text()
 
     def set_input_text(self, text: str, cursor_to_end: bool = True) -> None:
         """
-        Sets the text of the launcher's input field.
+        Sets the text of the F7 input field.
         This action might trigger the window's input change handlers.
 
         Args:
@@ -104,7 +102,7 @@ class API:
             if cursor_to_end:
                 self._window.input_field.setCursorPosition(len(text))
 
-    def update_preview_content(self, content: str, is_html: bool = False) -> None:
+    def update_preview_content(self, content: str = "", is_html: bool = False) -> None:
         """
         Updates the content of the preview area.
         Automatically shows the preview if there is content, hides it if content is empty,
@@ -133,11 +131,13 @@ class API:
 
         self._adjust_window_height()  # Adjust height after content change and visibility change
 
-    def close_launcher(self, copy_and_close_text: Optional[str] = None) -> None:
+    def close(self, copy_and_close_text: Optional[str] = None) -> None:
         """
-        Closes/hides the launcher window.
+        Closes/hides the F7 window.
         If text is provided, it's copied to clipboard before closing,
         and a status message confirms the copy.
+
+        do not use after error message.
 
         Args:
             copy_and_close_text: Optional text to copy to clipboard before closing.
@@ -147,17 +147,19 @@ class API:
             result_preview = str(copy_and_close_text).replace("\n", " ").strip()[:50]
             self.set_status(f"📋 Copied: {result_preview}...")
             # Delay closing to allow user to see the status message
-            QTimer.singleShot(250, self._window.close_launcher_window)
+            QTimer.singleShot(250, self._window.close_window)
         else:
-            self._window.close_launcher_window()
+            self._window.close_window()
 
-    def quit_application(self) -> None:
+    def forcequit_application(self) -> None:
         """
-        Quits the entire SlickLauncher application.
+        Quits the entire F7 application.
+
+        Use only in case you really have to fully quit, instead of close
         """
         self._window.quit_application()
 
-    def get_settings(self) -> Settings:
+    def get_settings(self) -> "Settings":
         """
         Provides read-only access to the application's settings object.
         """

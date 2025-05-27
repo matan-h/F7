@@ -24,8 +24,8 @@ class PythonEvalPlugin(PluginInterface):
 
     HAS_AUTOCOMPLETE = True  # Signal that this plugin provides completions
 
-    def __init__(self, launcher_instance, settings):
-        super().__init__(launcher_instance, settings)
+    def __init__(self, api, settings):
+        super().__init__(api, settings)
         self.eval_context = self._create_context()
 
     def get_status_message(self) -> str:
@@ -98,22 +98,17 @@ class PythonEvalPlugin(PluginInterface):
         result_str, error_str = self._evaluate(command, selected_text)
 
         if error_str:
-            # Optionally display error briefly before quitting?
-            # For now, just print and return None (launcher won't copy error)
             print(f"Execution Error: {error_str}", file=sys.stderr)
-            self.api.set_status(f"💥 Error (not copied)")  # Update status bar directly
+            self.api.set_status(f"💥 Error (not copied)")
             return None  # Indicate error or no clipboard action needed
         elif result_str is not None:
-            return result_str  # Return the result string for the launcher to copy
+            return result_str  # Return the result string to copy
         else:
             return None  # No command entered
 
     def _create_context(self):
         ctx = dotdict(builtins.__dict__)
-        # ctx.space = " "
-        # ctx.lj = ctx.ljoin = ctx.lnjoin = ctx.linejoin = "\n".join
-        # ctx.sjoin = ctx.spacejoin = " ".join
-        # ctx.vjoin = ctx.voidjoin = "".join
+
         ctx.update(static_globals)
         ctx.update(cyber_ctx)
         return ctx

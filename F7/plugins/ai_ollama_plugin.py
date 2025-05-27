@@ -7,7 +7,7 @@ from typing import Optional
 
 from PyQt6.QtCore import QTimer, pyqtSignal
 
-from slick_launcher.utils import remove_none
+from F7.utils import remove_none
 
 from .base_plugin import PluginInterface, Thread
 
@@ -220,7 +220,7 @@ class AiOllamaPlugin(PluginInterface):
             self._last_preview = result
             self.api.set_status("✅ Preview ready")
         else:
-            self.api.close_launcher(copy_and_close_text=result)
+            self.api.close(copy_and_close_text=result)
 
     def _on_error(self, msg: str):
         print("AI error:", msg)

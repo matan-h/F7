@@ -1,4 +1,3 @@
-# core.py
 import os
 import sys
 import traceback
@@ -6,20 +5,16 @@ from typing import Optional
 
 from appdirs import user_config_dir
 
-from .api import API  # For type hinting api_instance
+from .api import API
 from .clip import get_selected_text
-from .plugins import (
-    plugins as plugins_registry,  # plugins is a list of plugin classes from plugins/__init__.py
-)
-from .plugins.base_plugin import PluginInterface  # For type hinting
-
-# Local imports from your project structure
-from .settings import Color, HotKeyType, Settings  # Assuming Color is used or defined
+from .plugins import plugins as plugins_registry
+from .plugins.base_plugin import PluginInterface
+from .settings import Color, HotKeyType, Settings
 
 
 class CoreLogic:
     """
-    Handles non-QT UI related logic for Slick Launcher, including:
+    Handles non-QT UI related logic for F7, including:
     - Settings management (loading, saving, registration)
     - Plugin loading and management
     - Command history
@@ -27,9 +22,7 @@ class CoreLogic:
     """
 
     def __init__(self):
-        self.config_dir = user_config_dir(
-            "slick_launcher"
-        )
+        self.config_dir = user_config_dir("F7")
         os.makedirs(self.config_dir, exist_ok=True)
 
         self.settings = Settings()
@@ -42,6 +35,7 @@ class CoreLogic:
 
     def register_main_settings(self):
         # In Qt’s QSS you can use 8‑digit hex in the #AARRGGBB format, where the first two hex digits are the alpha channel.
+
         # [colors] section
         colors_section = self.settings.section(
             "colors"
@@ -103,7 +97,7 @@ class CoreLogic:
         )  # Use a different variable name
         system_section.add("startInTray", "Start minimized in system tray", True, bool)
         system_section.add(
-            "closeOnBlur", "Close launcher when it loses focus", True, bool
+            "closeOnBlur", "Close window when it loses focus", True, bool
         )
         system_section.add("doComplete", "Enable autocompletion", True, bool)
         system_section.add(
@@ -161,6 +155,7 @@ class CoreLogic:
         loaded_plugins_temp.sort(
             key=lambda p: (not (p.PREFIX or p.SUFFIX), p.PRIORITY, not p.IS_DEFAULT)
         )
+        # TODO: load external plugins too (maybe from ~/.config/F7/plugins)
         self.plugins = loaded_plugins_temp
 
         # Identify the default plugin after sorting
@@ -177,12 +172,6 @@ class CoreLogic:
 
         if not self.plugins:
             print("Core: Warning: No valid plugins were loaded.", file=sys.stderr)
-
-        # After all plugins are loaded and have registered their settings,
-        # it might be a good time to re-load settings from file to catch any plugin-specific settings.
-        # However, this could overwrite defaults if the file doesn't exist or is minimal.
-        # The current flow is: register main -> load plugins (they register) -> load from file.
-        # This means plugin-registered settings will have their defaults unless overridden in the TOML.
 
     def init_history(self):
         self.history = []
@@ -217,7 +206,6 @@ class CoreLogic:
             # current_history_index should point to one position *after* the last item,
             # effectively representing the "new command" line.
             self.current_history_index = len(self.history)
-            # self.save_history() # Consider saving on quit or periodically, not on every add.
 
     def get_history_previous(self):
         if not self.history:
@@ -240,7 +228,7 @@ class CoreLogic:
             # We are at the last actual history item, moving "next" goes to the "new command" line
             self.current_history_index += 1
             return ""  # Signal to clear input
-        return ""  # Should not be reached if logic is correct
+        return ""  # Should not be reached
 
     def reset_history_index_to_latest(self):
         if (
@@ -257,7 +245,7 @@ class CoreLogic:
         if not command:  # If command is empty, usually the default plugin handles it
             return self.default_plugin
 
-        for plugin in self.plugins:  # Assumes plugins are sorted by priority
+        for plugin in self.plugins:
             if plugin.PREFIX and command.startswith(plugin.PREFIX):
                 return plugin
 
@@ -284,5 +272,4 @@ class CoreLogic:
             return get_selected_text()
         except Exception as e:
             print(f"Core: Error getting selected text from OS: {e}", file=sys.stderr)
-            # traceback.print_exc() # For debugging
             return ""
