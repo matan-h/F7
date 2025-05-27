@@ -17,8 +17,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from F7.hotkey import HotkeyListener
-from F7.types import QInstance
+from f7.custom_types import QInstance
+from f7.hotkey import HotkeyListener
 
 from .api import API
 from .core import CoreLogic

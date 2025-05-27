@@ -1,7 +1,8 @@
 import subprocess
 from typing import Optional
 
-from ..types import pyqtSignal
+from f7.custom_types import pyqtSignal
+
 from .base_plugin import PluginInterface, Thread
 
 

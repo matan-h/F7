@@ -7,7 +7,7 @@ from typing import Optional
 
 from PyQt6.QtCore import QTimer, pyqtSignal
 
-from F7.utils import remove_none
+from f7.utils import remove_none
 
 from .base_plugin import PluginInterface, Thread
 
