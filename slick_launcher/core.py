@@ -28,8 +28,8 @@ class CoreLogic:
 
     def __init__(self):
         self.config_dir = user_config_dir(
-            "slick_launcher", "slick_launcher_author"
-        )  # Added appauthor for robustness
+            "slick_launcher"
+        )
         os.makedirs(self.config_dir, exist_ok=True)
 
         self.settings = Settings()
@@ -115,7 +115,7 @@ class CoreLogic:
         system_section.add(
             "hotkey",
             "the keyboard shortcut to start the app from tray in windows/macos",
-            "<ctrl>+<alt>+s",
+            "<F7>",
             HotKeyType,
         )
 
