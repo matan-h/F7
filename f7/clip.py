@@ -69,10 +69,9 @@ def _get_selected_text_linux_direct():
                 if result.stdout:
                     return result.stdout
                 else:
-                    # print("wl-paste succeeded but returned empty (no primary selection?).", file=sys.stderr)
                     return ""  # Return empty string for empty selection
             except FileNotFoundError:
-                # Should not happen due to shutil.which, but belt and suspenders
+                # Should not happen due to shutil.which
                 print(
                     "wl-paste command not found despite initial check.", file=sys.stderr
                 )
@@ -81,15 +80,21 @@ def _get_selected_text_linux_direct():
             except subprocess.CalledProcessError as e:
                 # wl-paste might fail if compositor doesn't support primary selection,
                 # or if no selection exists. Error code might vary.
-                # print(f"wl-paste failed (is primary selection supported/active?): {e}", file=sys.stderr)
+                print(
+                    f"wl-paste failed (is primary selection supported/active?): {e}",
+                    file=sys.stderr,
+                )
                 # Treat failure as "no selection retrievable this way"
                 pass
             except Exception as e:
                 print(
                     f"An unexpected error occurred with wl-paste: {e}", file=sys.stderr
                 )
-        # else:
-        #     print("Wayland session detected, but wl-paste command not found. Install wl-clipboard.", file=sys.stderr)
+        else:
+            print(
+                "Wayland session detected, but wl-paste command not found. Install wl-clipboard.",
+                file=sys.stderr,
+            )
 
     # If not Wayland, or wl-paste failed/not found, try X11's xsel
     # Check if DISPLAY is set, indicating an X11 context (could be XWayland)

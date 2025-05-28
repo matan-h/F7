@@ -792,7 +792,7 @@ class F7Window(singleInstance):
     def disappear(self):
         self._reset_ui_and_state()
         self.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, False)
-        self.setVisible(False)
+        QTimer.singleShot(0, lambda: self.setVisible(False))
 
     # Override closeEvent to handle tray icon logic if window is closed by user
     def closeEvent(self, event):

@@ -1,7 +1,7 @@
 import platform
 
 os_name = platform.system()
-if os_name != "Linux":  # TODO: maybe make it use pynput on x11.
+if os_name == "Windows":
     from pynput import keyboard
 
     class HotkeyListener:
