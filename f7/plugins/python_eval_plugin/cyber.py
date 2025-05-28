@@ -1,13 +1,16 @@
 import base64
+import csv
 import functools
+import io
 import math
 from collections import Counter
 
 from ...utils import dotdict
 
 """
-the idea of this file is to offer the must-have options, support both python notion and cyberchef notion
+the idea of this file is to offer the must-have functions to parse,analysis,and manipulate data, with support both python notion and cyberchef notion
 """
+
 ctx = dotdict()
 
 
@@ -88,3 +91,33 @@ def xor(s: bytes, k: int | str, encoding="utf-8"):
 
 
 ctx.xor = xor
+
+
+### data formats
+def parse_tsv(text: str, key_field=0, delimiter="\t"):
+
+    rows = list(csv.DictReader(io.StringIO(text), delimiter=delimiter))
+    if key_field is None:
+        return rows
+
+    if isinstance(key_field, int):
+        fieldnames = rows[0].keys()
+        key_field = list(fieldnames)[key_field]
+    return {row[key_field]: row for row in rows}
+
+
+ctx.parse_tsv = ctx.from_tsv = parse_tsv
+
+
+def to_tsv(rows: dict | list, delimiter="\t") -> str:
+    if isinstance(rows, dict):
+        rows = list(rows.values())
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=rows[0].keys(), delimiter=delimiter)
+    writer.writeheader()
+    writer.writerows(rows)
+    return output.getvalue()
+
+
+ctx.to_tsv = to_tsv

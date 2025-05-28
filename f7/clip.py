@@ -95,6 +95,7 @@ def _get_selected_text_linux_direct():
                 "Wayland session detected, but wl-paste command not found. Install wl-clipboard.",
                 file=sys.stderr,
             )
+        return
 
     # If not Wayland, or wl-paste failed/not found, try X11's xsel
     # Check if DISPLAY is set, indicating an X11 context (could be XWayland)

@@ -1,53 +1,112 @@
-# Slick Launcher - bad readme by gemini
+# F7
+> stop using `clipaste | <your python/command here> | clipcopy`
 
-Slick Launcher is a fast, keyboard-driven utility designed to help you quickly process text, execute commands, and automate tasks without interrupting your workflow. It pops up instantly, ready for your input, and works seamlessly with text you've selected in any application.
+<!-- TODO: screenshot -->
 
-Forget hunting through menus or switching windows for simple actions. With Slick Launcher, your selected text becomes a dynamic input, and a simple command gets the job done, often copying the result directly back to your clipboard.
+`F7` is a app to help you manipulate strings fast and easily using either python,command line,or local LLM
 
-## Features
+## Installation
+Install using pip:
+```bash
+pip install f7
+```
+or using [pipx](https://github.com/pypa/pipx):
+```bash
+pipx install f7
+```
 
-* **Quick Access:** Launch with a simple key combination and get immediate access to the input field.
-* **Works with Selected Text:** Automatically grabs the text you have currently selected in another application, making it the subject of your actions.
-* **Plugin Powered:** Its capabilities are extended through a flexible plugin system. Each plugin can understand specific commands or text patterns.
-* **Live Preview:** See the potential output or result of your command *before* you execute it, right in the launcher window.
-* **Smart Autocompletion:** Get suggestions as you type, helping you discover available commands and options within plugins.
-* **Clipboard Integration:** Often, the result of an action is automatically copied to your clipboard, ready for you to paste.
-* **Clean Interface:** A minimal, non-intrusive design that stays out of your way.
+<!-- in the future, maybe gh releases -->
 
-## How to Use
+## Setup
+### Linux
+requirements: `xsel` on X,`wl-clipboard` on wayland.
 
-1.  **Launch:** Start the Slick Launcher application. You'll see a small, focused window appear, usually in the center of your screen.
-2.  **Select Text (Optional):** In *any* other application, select the text you want to work with. When Slick Launcher is active, it will automatically pick up this selected text.
-3.  **Type Your Command:** In the input field of the Slick Launcher, start typing. You can type:
-    * Just text you want to process.
-    * A command, often starting or ending with a specific character or word depending on the installed plugins (e.g., `!search`, `translate to fr:`).
-4.  **See the Preview:** As you type, the area below the input field will update, showing you what the active plugin intends to do or the potential result.
-5.  **Use Autocompletion:** If the active plugin supports it, press `Ctrl + Space` to trigger autocompletion suggestions based on what you've typed. Use the arrow keys to navigate and `Tab` or `Enter` to select a suggestion.
-6.  **Execute:** Once the preview looks right (or if there's no preview), press `Enter` to execute the command or action.
-7.  **Get Results:** If the plugin produces a result (like a calculation or translated text), it might be automatically copied to your clipboard. The status bar will often give you feedback.
-8.  **Dismiss:** The launcher will typically close automatically after execution or if you press `Escape` (unless the autocompletion popup is open, in which case press `Escape` again). It also hides if you switch focus away from it.
+to create desktop files, run
+```bash
+f7 register
+```
+That will create the main application desktop file and optionally register a startup file.
 
-<!-- ## Installation
+the next step is to go the `Shortcuts` settings (`Settings > Keyboard > Shortcuts > Add Application` on KDE and Gnome), and register the `f7` application with your custom shortcut (such as `F7` key)
 
-*(Instructions for installing Python, PyQt6, and placing the code and plugins will go here.)*
+you could also try to register the command `<f7 path> show` instead
 
-1.  Make sure you have Python installed (version 3.x recommended).
-2.  Install the PyQt6 library:
-    ```bash
-    pip install PyQt6
+### Windows
+run
+```bash
+f7 register
+```
+That will register the startup registry key. The app itself would listen to shortcut. you can change the shortcut using the `F7` settings (on the tray menu)
+
+### Macos
+currently no support, but maybe possible with MacOS `Shortcuts` app: `Shortcuts > + > shell script` or using `Automator` app.
+If you know any way to do that, please reach out or open a PR
+
+## Usage
+1.  **Select the Text:** Highlight the list of names in whatever application you're using.
+    <!-- ![Screenshot of text selection](https://placehold.co/400x100/eee/333?text=1.+Select+Text+in+App) -->
+
+2.  **Activate the Tool using the shortcut:**
+    <!-- ![Screenshot of the utility window appearing](https://placehold.co/500x150/ddd/333?text=2.+Utility+Appears) -->
+
+3.  **Type Your Transformation:** In the input field, you can use a bit of Python (python is the default,There are multiple plugins such as local LLM, with `!` prefix or suffix, command line with `$` prefix). For this task, you'd type:
+    ```python
+    [name.split()[0] for name in lines]
     ```
-3.  Install any necessary libraries for the plugins you want to use (refer to plugin documentation).
-4.  Save the code provided as `slick_launcher.py`.
-5.  Create a `plugins` directory in the same location and add your plugin files there.
-6.  Run the launcher:
+    *(This tells the tool: "For each line of the selected text, split it into words, and give me the first word.")*
+    (without the `print` it would just join the list by `\n`)
+
+    As you type, you'll see a **live preview** of what the result will be:
+    ```
+    Laura
+    Dale
+    Audrey
+    Harry
+    ```
+    <!-- ![Screenshot of the utility with input and preview](https://placehold.co/500x200/ccc/333?text=3.+Type+Command+&+See+Preview) -->
+
+4.  **Hit Enter:** Press the `Enter` key.
+
+5.  **Done!** The list `['Laura', 'Dale', 'Audrey', 'Harry']` is now copied to your clipboard. The application window will disappear. You can now paste your extracted first names wherever you need them!
+    <!-- ![Animation/icon of pasting text](https://placehold.co/300x80/eee/333?text=4.+Result+Copied!+Paste+it!) -->
+
+## Setting Up Local AI (LLM)
+
+This application supports two main backends: **Ollama** and **Llama.cpp**.
+
+**1. Ollama Setup:**
+
+* **Install Ollama:** If you haven't already, download and install Ollama from [ollama.com](https://ollama.com/).
+* **Pull a Model:** Open your terminal or command prompt and pull a model that you want to use. For example, to get the `phi3` model (a good general-purpose small model):
     ```bash
-    python slick_launcher.py
-    ``` -->
+    ollama pull phi3
+    ```
+    You can find other available models on the Ollama library website.
+* **Configure in the App:**
+    1.  Open the application's settings (type `/settings` or use the tray menu).
+    2.  Go to the "Ai" (or similarly named) settings tab.
+    3.  Set "Backend" to `ollama` (its default).
+    4.  In "Ollama Model," enter the name of the model you pulled (e.g., `phi3`).
 
-## Customization & Plugins
+**2. Llama.cpp Setup:**
+* **Get a Llama.cpp Compatible Model:** You'll need a GGUF file. You can find [these](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/tree/main) on platforms like Hugging Face. (usually you want to pick the `Q4_K_M` file)
+* **Install Llama.cpp Python Bindings:** If the application doesn't bundle it, you might need to install the `llama-cpp-python` library. Usually, this is handled by the application's dependencies.
+* **Configure in the App:**
+    1.  Open the application's settings.
+    2.  Go to the Ai settings tab.
+    3.  Set "Backend" to `llama_cpp`.
+    4.  In "Llama.cpp Model Path," provide the full path to your downloaded GGUF model file on your computer.
+    5.  Configure `llama_cpp_n_threads` (number of CPU threads) and `llama_cpp_use_GPU` (if you have a compatible GPU and Llama.cpp build).
+    6.  Adjust other settings as needed.
 
-Slick Launcher's power comes from its plugins. You can extend its functionality by adding new plugins to the `plugins` directory. Each plugin can define how it handles input, what previews it shows, and what action it performs upon execution.
+## FAQ
+<!-- TODO: add FAQ  -->
+### How to report errors/problems/suggestions
 
-*(Optional: Briefly mention where users can find or how they can create plugins if applicable.)*
+please open a [GitHub issue](https://github.com/matan-h/F7/issues)
 
-Get started with Slick Launcher and streamline your daily tasks!
+### How can I donate you
+
+If you found this tool/library useful, it would be great if you could buy me a coffee:
+
+<a href="https://www.buymeacoffee.com/matanh" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-blue.png" alt="Buy Me A Coffee" height="47" width="200"></a>

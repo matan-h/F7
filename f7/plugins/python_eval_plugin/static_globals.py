@@ -32,7 +32,7 @@ from string_utils import (
     words_count,
 )
 
-# shortcuts/longcuts
+# simple shortcuts/longcuts
 ## string_utils
 snake = snake_case = camel_case_to_snake
 camel = camel_case = snake_case_to_camel
