@@ -4,7 +4,7 @@ import traceback
 from contextlib import contextmanager
 
 from PyQt6.QtCore import QMetaObject, QStringListModel, Qt, QTimer, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QAction, QFontMetrics, QGuiApplication, QIcon, QKeyEvent
+from PyQt6.QtGui import QAction, QFontMetrics, QGuiApplication, QIcon, QKeyEvent,QCursor
 from PyQt6.QtWidgets import (
     QApplication,
     QCompleter,
@@ -756,13 +756,32 @@ class F7Window(singleInstance):
         Shows the main window, captures OS selection, and sets focus.
         Called from tray or when a 'show' socket command is received.
         """
-        self._capture_initial_os_selection()  # Get current OS selected text
-
+        try:
+            self._capture_initial_os_selection()  # Get current OS selected text
+        except KeyboardInterrupt:
+            print("you are likely running F7 from the terminal. to copy on windows/macOS it does ctrl+c. Unfortunately, its the same shortcut to quit in the terminal. ")
+        
+        if sys.platform == "win32":
+            self.move_to_current_monitor()
+        
         self.setVisible(True)
 
         self.activateWindow()  # Bring to front and give focus
+
         self.raise_()  # Ensure it's on top of other windows
         self.input_field.setFocus()  # Set focus to the input field
+    
+    def move_to_current_monitor(self):
+        """on windows, the app doesn't magically shown in the right monitor."""
+        cursor_pos = QCursor.pos()  # Get current cursor position
+        screen = QApplication.screenAt(cursor_pos)  # Get screen under cursor
+        
+        if screen:
+            # Get the geometry of the current screen
+            screen_geometry = screen.geometry()
+            # Optionally, adjust position if needed (e.g., center window)
+            self.move(screen_geometry.center() - self.rect().center())
+
 
     # --- Overridden from singleInstance base class ---
     def process_socket_command(self, command_data: str):

@@ -13,6 +13,7 @@ from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from string import *
 from urllib.parse import quote, quote_plus, unquote, unquote_plus, urlparse, urlsplit
+from fnmatch import fnmatch
 
 from string_utils import (
     asciify,
