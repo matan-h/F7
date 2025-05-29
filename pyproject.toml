@@ -28,3 +28,96 @@ F7-shift = "f7.__main__:main"
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+
+# Content below this line added by briefcase convert
+[tool.briefcase]
+project_name = "F7"
+bundle = "com.matan-h"
+version = "0.0.1"
+url = "https://matan-h.com"
+license.file = "LICENSE"
+author = "matan h"
+author_email = "matan.honig2@gmail.com"
+
+[tool.briefcase.app.f7]
+formal_name = "F7"
+description = ""
+long_description = """More details about the app should go here."""
+sources = ["f7"]
+test_sources = ["test"]
+
+requires = [ # Duplicate my package names, but it seem briefcase must have that.
+    "pyqt6",
+    "pyperclip",
+    "pyautogui",
+    "ollama",
+    "tomli",
+    "tomli-w",
+    "appdirs",
+    "keyboard",
+    "qt-material",
+    "python-string-utils",
+    "llama-cpp-python",
+]
+
+test_requires = [
+    # Add your cross-platform test requirements here
+]
+
+[tool.briefcase.app.f7.macOS]
+universal_build = true
+requires = [
+    # Add your macOS-specific app requirements here
+]
+
+[tool.briefcase.app.f7.linux]
+requires = [
+    # Add your Linux-specific app requirements here
+]
+
+[tool.briefcase.app.f7.linux.system.debian]
+system_requires = [
+    # Add any system packages needed at build the app here
+]
+
+system_runtime_requires = [
+    # Add any system packages needed at runtime here
+]
+
+[tool.briefcase.app.f7.linux.system.rhel]
+system_requires = [
+    # Add any system packages needed at build the app here
+]
+
+system_runtime_requires = [
+    # Add any system packages needed at runtime here
+]
+
+[tool.briefcase.app.f7.linux.system.suse]
+system_requires = [
+    # Add any system packages needed at build the app here
+]
+
+system_runtime_requires = [
+    # Add any system packages needed at runtime here
+]
+
+[tool.briefcase.app.f7.linux.system.arch]
+system_requires = [
+    # Add any system packages needed at build the app here
+]
+
+system_runtime_requires = [
+    # Add any system packages needed at runtime here
+]
+
+[tool.briefcase.app.f7.linux.flatpak]
+flatpak_runtime = "org.freedesktop.Platform"
+flatpak_runtime_version = "24.08"
+flatpak_sdk = "org.freedesktop.Sdk"
+
+[tool.briefcase.app.f7.windows]
+requires = [
+    # Add your Windows-specific app requirements here
+]

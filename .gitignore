@@ -4,3 +4,5 @@ a.py
 b.py
 t.py
 __pycache__/
+*.dist-info
+build/
