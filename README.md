@@ -95,13 +95,7 @@ If you find a way to make it work, feel free to open a PR or reach out!
 
 ## Command Line Mode
 
-You can also run F7 in command-line mode directly:
-
-```bash
-f7 show --cli
-```
-
-This allows using the same transformation interface from your terminal.
+You could also use `$` prefix to run a command (then ctrl+enter to preview), or `$$` fix to live-preview:
 
 ![Command mode screenshot](./screenshots/f7-command-mode.png)
 
