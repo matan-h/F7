@@ -156,7 +156,7 @@ def repr_as_json(obj, text):
     if type(obj) is map or type(obj) is filter or isinstance(obj, types.GeneratorType):
         obj = list(obj)
 
-    if type(obj) is list and len(obj) < 50 and all(type(x) is str for x in obj):  # type: ignore
+    if type(obj) is list and all(type(x) is str for x in obj):
         return "\n".join(obj)
 
     return repr(obj)
