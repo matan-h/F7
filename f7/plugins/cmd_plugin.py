@@ -8,7 +8,7 @@ from f7.custom_types import pyqtSignal
 from .base_plugin import PluginInterface, Thread
 
 
-def get_default_shell() -> str:
+def get_default_shell() -> list[str]:
     """Return the default shell executable and argument based on the current OS."""
     if sys.platform == "win32":
         return [os.environ.get("COMSPEC", "cmd.exe"), "/c"]

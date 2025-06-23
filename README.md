@@ -137,7 +137,6 @@ You can find other available models on the Ollama library website.
   5. Enable GPU if you have one (`llama_cpp_use_GPU`)
 
 ## F7 python
-## what is this grep() function, that's not python builtin
 F7 adds a few helpful twists to regular Python to speed things up:
 * Predefined variables: `text` (alias:`s`), `lines`, `words`
 * Auto-parsed content: `_` var will try to parse the text as JSON, Python literal, CSV or base64.
