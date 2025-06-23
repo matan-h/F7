@@ -1,8 +1,8 @@
 [project]
 name = "f7"
-version = "0.1.1"
+version = "0.1.2"
 description = "F7 is a productivity tool to manipulate strings using python,shell or AI"
-authors = [{ name = "matan h", email = "matan.honig2@gmail.com" }]
+authors = [{ name = "matan h" }]
 readme = "README.md"
 urls.homepage = "https://github.com/matan-h/f7"
 urls.repository = "https://github.com/matan-h/f7"
