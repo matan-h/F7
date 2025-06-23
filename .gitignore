@@ -6,3 +6,4 @@ t.py
 __pycache__/
 *.dist-info
 build/
+dist/

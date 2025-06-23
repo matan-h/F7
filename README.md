@@ -1,7 +1,7 @@
 # F7
 > I know a command that could do that
 
-![Screenshot of the app with grep() python command to find https links](./screenshots/hyperland-pygrep.png)
+![Screenshot of the app with grep() python command to find https links](https://github.com/matan-h/F7/raw/main/screenshots/hyperland-pygrep.png)
 
 `F7` is an app to help you manipulate strings fast and easily using Python, the command line, or a local LLM.
 
@@ -57,7 +57,7 @@ If you find a way to make it work, feel free to open a PR or reach out!
 1. **Select the Text:** Highlight any text from any app.
 
 2. **Activate F7:** Hit your shortcut key.
-   ![Screenshot of the F7 window appearing on todepond website](./screenshots/f7-opening.png)
+   ![Screenshot of the F7 window appearing on todepond website](https://github.com/matan-h/F7/raw/main/screenshots/f7-opening.png)
 
 3. **Type Your Transformation:**
 
@@ -87,7 +87,7 @@ If you find a way to make it work, feel free to open a PR or reach out!
    ...
    ```
 
-   ![Screenshot of the F7 window appearing](./screenshots/f7-todepond-python.png)
+   ![Screenshot of the F7 window appearing](https://github.com/matan-h/F7/raw/main/screenshots/f7-todepond-python.png)
 
 4. **Hit Enter:** Result is copied to your clipboard.
 
@@ -97,7 +97,7 @@ If you find a way to make it work, feel free to open a PR or reach out!
 
 You could also use `$` prefix to run a command (then ctrl+enter to preview), or `$$` fix to live-preview:
 
-![Command mode screenshot](./screenshots/f7-command-mode.png)
+![Command mode screenshot](https://github.com/matan-h/F7/raw/main/screenshots/f7-command-mode.png)
 
 ## Local AI (LLM) Setup
 
@@ -174,6 +174,6 @@ please open a [GitHub issue](https://github.com/matan-h/F7/issues)
 
 ### How can I donate you
 
-If you found this app useful, you can buy me a coffee:
+If you found this app useful, please buy me a coffee:
 
 <a href="https://www.buymeacoffee.com/matanh" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-blue.png" alt="Buy Me A Coffee" height="47" width="200"></a>

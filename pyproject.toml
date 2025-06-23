@@ -1,9 +1,21 @@
 [project]
 name = "f7"
-version = "0.1.0"
-description = ""
+version = "0.1.1"
+description = "F7 is a productivity tool to manipulate strings using python,shell or AI"
 authors = [{ name = "matan h", email = "matan.honig2@gmail.com" }]
 readme = "README.md"
+urls.homepage = "https://github.com/matan-h/f7"
+urls.repository = "https://github.com/matan-h/f7"
+
+license = { text = "MIT" }
+keywords = ["automation", "qt", "gui", "productivity", "command", "ollama"]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
 requires-python = ">=3.9"
 dependencies = [
     "pyqt6 (>=6.9.0,<7.0.0)",
@@ -28,81 +40,3 @@ F7-shift = "f7.__main__:main"
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-
-# Content below this line added by briefcase convert
-[tool.briefcase]
-project_name = "F7"
-bundle = "com.matan-h"
-version = "0.0.1"
-url = "https://matan-h.com"
-license.file = "LICENSE"
-author = "matan h"
-author_email = "matan.honig2@gmail.com"
-
-[tool.briefcase.app.f7]
-formal_name = "F7"
-description = ""
-sources = ["f7"]
-test_sources = ["test"]
-
-test_requires = [
-    # Add your cross-platform test requirements here
-]
-
-[tool.briefcase.app.f7.macOS]
-universal_build = true
-requires = [
-    # Add your macOS-specific app requirements here
-]
-
-[tool.briefcase.app.f7.linux]
-requires = [
-    # Add your Linux-specific app requirements here
-]
-
-[tool.briefcase.app.f7.linux.system.debian]
-system_requires = [
-    # Add any system packages needed at build the app here
-]
-
-system_runtime_requires = [
-    # Add any system packages needed at runtime here
-]
-
-[tool.briefcase.app.f7.linux.system.rhel]
-system_requires = [
-    # Add any system packages needed at build the app here
-]
-
-system_runtime_requires = [
-    # Add any system packages needed at runtime here
-]
-
-[tool.briefcase.app.f7.linux.system.suse]
-system_requires = [
-    # Add any system packages needed at build the app here
-]
-
-system_runtime_requires = [
-    # Add any system packages needed at runtime here
-]
-
-[tool.briefcase.app.f7.linux.system.arch]
-system_requires = [
-    # Add any system packages needed at build the app here
-]
-
-system_runtime_requires = [
-    # Add any system packages needed at runtime here
-]
-
-[tool.briefcase.app.f7.linux.flatpak]
-flatpak_runtime = "org.freedesktop.Platform"
-flatpak_runtime_version = "24.08"
-flatpak_sdk = "org.freedesktop.Sdk"
-
-[tool.briefcase.app.f7.windows]
-requires = [
-    # Add your Windows-specific app requirements here
-]
