@@ -8,7 +8,7 @@ from collections import Counter
 from ...utils import dotdict
 
 """
-the idea of this file is to offer the must-have functions to parse,analysis,and manipulate data, with support both python notion and cyberchef notion
+the idea of this file is to offer the nice to have functions to parse,analysis,and manipulate data, with support both python notion and cyberchef notion
 """
 
 ctx = dotdict()

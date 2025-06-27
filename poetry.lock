@@ -962,6 +962,18 @@ dev = ["pre-commit (==4.0.1)", "pytest (==8.3.4)", "setuptools_scm (==8.1.0)", "
 docs = ["furo (==2024.8.6)", "pyenchant (==3.2.2)", "sphinx (==8.1.3)", "sphinx-autobuild (==2024.10.3)", "sphinx-copybutton (==0.5.2)", "sphinx_tabs (==3.4.7)", "sphinxcontrib-spelling (==8.0.1)"]
 
 [[package]]
+name = "scriptpy-syntax"
+version = "0.1.1"
+description = "Python syntax extensions to make live scripts easier.."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "scriptpy_syntax-0.1.1-py3-none-any.whl", hash = "sha256:eeba3c1d4cf15b25cb082ef734fbd395fb337ec62dc67e8cc77bd3869277d873"},
+    {file = "scriptpy_syntax-0.1.1.tar.gz", hash = "sha256:abe22f674efab71c608eaebeb46f4f9ae713ea2d3a98c9c940a8a077c5b77bd7"},
+]
+
+[[package]]
 name = "six"
 version = "1.17.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -1070,4 +1082,4 @@ typing-extensions = ">=4.12.0"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "ea20b2e1f6ea74cb33bf3f24529add1f20b7a7ab64db740a3bd77729e7942f66"
+content-hash = "7babbb3e1637791a43bc0f7fd29fa0d1e6825863faa5e1b07cbbf28b58677276"

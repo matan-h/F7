@@ -7,11 +7,12 @@ import sys
 
 from PyQt6.QtCore import QStringListModel
 from PyQt6.QtWidgets import QCompleter, QLabel, QTextEdit
+from scriptpy import custom_eval
 
 from ...utils import WORD_BOUNDARY_RE, dotdict
 from ..base_plugin import PluginInterface
 from .cyber import ctx as cyber_ctx
-from .python_utils import PyUtils, auto_parse, redirect_stdin, repr_as_json, smart_eval
+from .python_utils import PyUtils, auto_parse, redirect_stdin, repr_as_json
 from .static_globals import static_globals
 
 
@@ -44,12 +45,14 @@ class PythonEvalPlugin(PluginInterface):
 
             combined_buf = io.StringIO()
             fake_stdin = io.StringIO(selected_text)
-            # security:ignore. this eval command is the intended use of this plugin.
-            with redirect_stdin(fake_stdin), contextlib.redirect_stdout(
-                combined_buf
-            ), contextlib.redirect_stderr(combined_buf):
 
-                result = smart_eval(command, self.eval_context)
+            with (
+                redirect_stdin(fake_stdin),
+                contextlib.redirect_stdout(combined_buf),
+                contextlib.redirect_stderr(combined_buf),
+            ):
+
+                result = custom_eval(command, globals_=self.eval_context)
 
             output = combined_buf.getvalue()
             if result is None and output:

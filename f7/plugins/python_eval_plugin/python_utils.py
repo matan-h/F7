@@ -63,59 +63,6 @@ class PyUtils:
         else:
             return None
 
-
-def balance_fix(s):
-    stack = []
-    try:
-        tokens = tokenize.tokenize(io.BytesIO(s.encode("utf-8")).readline)
-        for tok in tokens:
-            tok_type = tok.type
-            tok_str = tok.string
-            if not tok_str:
-                continue
-
-            if tok_type in (tokenize.STRING, tokenize.COMMENT):
-                continue  # Ignore brackets inside strings/comments
-            if tok_str in "([{":
-                stack.append({"(": ")", "[": "]", "{": "}"}[tok_str])
-            elif tok_str in ")]}":
-                if stack and stack[-1] == tok_str:
-                    stack.pop()
-                # Else: ignore mismatched closing brackets
-    except (tokenize.TokenError, IndentationError):
-        pass  # Handle unterminated tokens or other errors
-    return s + "".join(reversed(stack))
-
-
-def smart_eval(
-    code, globals_dict=None
-):  # inspired by pyodide CodeRunner : https://github.com/pyodide/pyodide/blob/4fbbbedc09496c6968086d69aadba75398718b13/src/py/_pyodide/_base.py#L172
-    if globals_dict is None:
-        globals_dict = {}
-
-    try:
-        tree = ast.parse(code, mode="exec", filename="<main>")
-    except SyntaxError:
-        try:
-            tree = ast.parse(balance_fix(code), mode="exec", filename="<main>")
-        except SyntaxError:
-            raise
-    if not tree.body:
-        return None
-    last_stmt = tree.body[-1]
-    if isinstance(last_stmt, ast.Expr):
-        # globals_dict = {}
-        if len(tree.body) > 1:
-            exec(
-                compile(
-                    ast.Module(body=tree.body[:-1], type_ignores=[]), "<ast>", "exec"
-                ),
-                globals_dict,
-            )
-        return eval(
-            compile(ast.Expression(last_stmt.value), "<ast>", "eval"), globals_dict
-        )
-    else:
         exec(compile(tree, "<ast>", "exec"), globals_dict)
         return None
 
@@ -148,15 +95,17 @@ def repr_as_json(obj, text):
         maybe_out = _run_if(obj, text)
         if maybe_out:
             return maybe_out
-    if type(obj) is str:
+    if isinstance(obj, str):
         return obj
-    if type(obj) is bytes:
-        return repr(obj)
 
-    if type(obj) is map or type(obj) is filter or isinstance(obj, types.GeneratorType):
+    if isinstance(obj, bytes):
+        return repr(obj)
+    # Accept any iterable that is map/filter/generator and convert to list
+    if isinstance(obj, (map, filter, types.GeneratorType)):
         obj = list(obj)
 
-    if type(obj) is list and all(type(x) is str for x in obj):
+    # Check if obj is a list or subclass of list, and all elements are str (like Pipeable list)
+    if isinstance(obj, list) and all(isinstance(x, str) for x in obj):
         return "\n".join(obj)
 
     return repr(obj)
